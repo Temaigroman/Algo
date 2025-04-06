@@ -1,0 +1,7 @@
+{
+  "dependencies": {
+    "node-pandas": "^1.0.5",
+    "pandas": "^0.0.3",
+    "yfinance": "^0.0.6"
+  }
+}
