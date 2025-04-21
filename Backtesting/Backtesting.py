@@ -2,7 +2,7 @@ import json
 import pandas as pd
 from datetime import datetime
 import matplotlib.pyplot as plt
-from ta.trend import SMAIndicator, EMAIndicator
+from ta.trend import SMAIndicator, EMAIndicator, MACD
 from ta.momentum import RSIIndicator
 from ta.volatility import BollingerBands
 import matplotlib
@@ -15,7 +15,10 @@ class Backtester:
         self.max_trade_amount = 1000
         self.stop_loss = 0.05  # 5%
         self.take_profit = 0.10  # 10%
-        self.strategy_params = {}
+        self.strategy_params = {
+            'indicators': [],  # Теперь храним список индикаторов
+            'logic': 'AND'  # Логика объединения сигналов (AND/OR)
+        }
         self.trades = []
         self.portfolio_values = []
 
@@ -33,64 +36,137 @@ class Backtester:
             print(f"Ошибка загрузки данных: {e}")
             return False
 
-    def select_indicator(self):
-        """Выбор технического индикатора"""
+    def add_indicator(self, indicator_type, params=None):
+        """Добавление индикатора"""
+        if params is None:
+            params = {}
+
+        if indicator_type == 'SMA':
+            window = params.get('window', 20)
+            self.data[f'sma_{window}'] = SMAIndicator(self.data['Close'], window).sma_indicator()
+            self.strategy_params['indicators'].append({
+                'type': 'SMA',
+                'window': window,
+                'column': 'Close'
+            })
+
+        elif indicator_type == 'EMA':
+            window = params.get('window', 20)
+            self.data[f'ema_{window}'] = EMAIndicator(self.data['Close'], window).ema_indicator()
+            self.strategy_params['indicators'].append({
+                'type': 'EMA',
+                'window': window,
+                'column': 'Close'
+            })
+
+        elif indicator_type == 'RSI':
+            window = params.get('window', 14)
+            overbought = params.get('overbought', 70)
+            oversold = params.get('oversold', 30)
+            self.data[f'rsi_{window}'] = RSIIndicator(self.data['Close'], window).rsi()
+            self.strategy_params['indicators'].append({
+                'type': 'RSI',
+                'window': window,
+                'overbought': overbought,
+                'oversold': oversold,
+                'column': 'Close'
+            })
+
+        elif indicator_type == 'Bollinger':
+            window = params.get('window', 20)
+            std_dev = params.get('std_dev', 2)
+            bb = BollingerBands(self.data['Close'], window, std_dev)
+            self.data[f'bb_upper_{window}'] = bb.bollinger_hband()
+            self.data[f'bb_lower_{window}'] = bb.bollinger_lband()
+            self.strategy_params['indicators'].append({
+                'type': 'Bollinger',
+                'window': window,
+                'std_dev': std_dev,
+                'column': 'Close'
+            })
+
+        elif indicator_type == 'MACD':
+            fast = params.get('fast', 12)
+            slow = params.get('slow', 26)
+            signal = params.get('signal', 9)
+            macd = MACD(self.data['Close'], window_fast=fast, window_slow=slow, window_sign=signal)
+            self.data['macd'] = macd.macd()
+            self.data['macd_signal'] = macd.macd_signal()
+            self.data['macd_hist'] = macd.macd_diff()
+            self.strategy_params['indicators'].append({
+                'type': 'MACD',
+                'fast': fast,
+                'slow': slow,
+                'signal': signal,
+                'column': 'Close'
+            })
+
+        else:
+            print(f"Неизвестный тип индикатора: {indicator_type}")
+            return False
+
+        return True
+
+    def select_indicators(self):
+        """Выбор нескольких индикаторов"""
         print("\nДоступные индикаторы:")
         print("1. SMA (Простая скользящая средняя)")
         print("2. EMA (Экспоненциальная скользящая средняя)")
         print("3. RSI (Индекс относительной силы)")
         print("4. Bollinger Bands (Полосы Боллинджера)")
+        print("5. MACD (Moving Average Convergence Divergence)")
 
-        choice = input("Выберите индикатор (1-4): ")
+        selected = []
+        while True:
+            choice = input("Выберите индикатор (1-5) или 'готово' для завершения: ")
+            if choice.lower() == 'готово':
+                break
 
-        if choice == '1':
-            window = int(input("Введите период SMA (например, 20): "))
-            self.strategy_params = {
-                'indicator': 'SMA',
-                'window': window,
-                'column': 'Close'
-            }
-            self.data['indicator'] = SMAIndicator(self.data['Close'], window).sma_indicator()
+            if choice == '1':
+                window = int(input("Введите период SMA (например, 20): "))
+                self.add_indicator('SMA', {'window': window})
+                selected.append(f"SMA({window})")
 
-        elif choice == '2':
-            window = int(input("Введите период EMA (например, 20): "))
-            self.strategy_params = {
-                'indicator': 'EMA',
-                'window': window,
-                'column': 'Close'
-            }
-            self.data['indicator'] = EMAIndicator(self.data['Close'], window).ema_indicator()
+            elif choice == '2':
+                window = int(input("Введите период EMA (например, 20): "))
+                self.add_indicator('EMA', {'window': window})
+                selected.append(f"EMA({window})")
 
-        elif choice == '3':
-            window = int(input("Введите период RSI (например, 14): "))
-            overbought = int(input("Уровень перекупленности (например, 70): "))
-            oversold = int(input("Уровень перепроданности (например, 30): "))
-            self.strategy_params = {
-                'indicator': 'RSI',
-                'window': window,
-                'overbought': overbought,
-                'oversold': oversold,
-                'column': 'Close'
-            }
-            self.data['indicator'] = RSIIndicator(self.data['Close'], window).rsi()
+            elif choice == '3':
+                window = int(input("Введите период RSI (например, 14): "))
+                overbought = int(input("Уровень перекупленности (например, 70): "))
+                oversold = int(input("Уровень перепроданности (например, 30): "))
+                self.add_indicator('RSI', {'window': window, 'overbought': overbought, 'oversold': oversold})
+                selected.append(f"RSI({window})")
 
-        elif choice == '4':
-            window = int(input("Введите период (например, 20): "))
-            std_dev = int(input("Количество стандартных отклонений (например, 2): "))
-            self.strategy_params = {
-                'indicator': 'Bollinger',
-                'window': window,
-                'std_dev': std_dev,
-                'column': 'Close'
-            }
-            bb = BollingerBands(self.data['Close'], window, std_dev)
-            self.data['indicator_upper'] = bb.bollinger_hband()
-            self.data['indicator_lower'] = bb.bollinger_lband()
+            elif choice == '4':
+                window = int(input("Введите период (например, 20): "))
+                std_dev = int(input("Количество стандартных отклонений (например, 2): "))
+                self.add_indicator('Bollinger', {'window': window, 'std_dev': std_dev})
+                selected.append(f"BB({window},{std_dev})")
 
-        else:
-            print("Неверный выбор индикатора")
+            elif choice == '5':
+                fast = int(input("Быстрый период (по умолчанию 12): ") or 12)
+                slow = int(input("Медленный период (по умолчанию 26): ") or 26)
+                signal = int(input("Сигнальный период (по умолчанию 9): ") or 9)
+                self.add_indicator('MACD', {'fast': fast, 'slow': slow, 'signal': signal})
+                selected.append(f"MACD({fast},{slow},{signal})")
+
+            else:
+                print("Неверный выбор. Попробуйте снова.")
+
+        if not selected:
+            print("Не выбрано ни одного индикатора")
             return False
 
+        # Выбор логики объединения сигналов
+        logic = input("Логика объединения сигналов (AND/OR, по умолчанию AND): ").upper() or 'AND'
+        if logic not in ['AND', 'OR']:
+            print("Неверный выбор логики. Используется AND")
+            logic = 'AND'
+
+        self.strategy_params['logic'] = logic
+        print(f"\nВыбранные индикаторы ({logic}): {', '.join(selected)}")
         return True
 
     def set_risk_parameters(self):
@@ -104,8 +180,85 @@ class Backtester:
         self.take_profit = float(
             input(f"Тейк-профит (% от цены входа, по умолчанию {self.take_profit * 100}%): ") or self.take_profit) / 100
 
+    def get_signal(self, i):
+        """Генерация торгового сигнала на основе выбранных индикаторов"""
+        if not self.strategy_params['indicators']:
+            return None
+
+        signals = []
+        current_price = self.data.iloc[i]['Close']
+        prev_price = self.data.iloc[i - 1]['Close']
+
+        for indicator in self.strategy_params['indicators']:
+            ind_type = indicator['type']
+
+            if ind_type == 'SMA' or ind_type == 'EMA':
+                col = f"{ind_type.lower()}_{indicator['window']}"
+                if (prev_price < self.data.iloc[i - 1][col] and
+                        current_price > self.data.iloc[i][col]):
+                    signals.append('buy')
+                elif (prev_price > self.data.iloc[i - 1][col] and
+                      current_price < self.data.iloc[i][col]):
+                    signals.append('sell')
+                else:
+                    signals.append(None)
+
+            elif ind_type == 'RSI':
+                col = f"rsi_{indicator['window']}"
+                rsi = self.data.iloc[i - 1][col]
+                if (rsi < indicator['oversold'] and
+                        current_price > prev_price):
+                    signals.append('buy')
+                elif (rsi > indicator['overbought'] and
+                      current_price < prev_price):
+                    signals.append('sell')
+                else:
+                    signals.append(None)
+
+            elif ind_type == 'Bollinger':
+                upper = f"bb_upper_{indicator['window']}"
+                lower = f"bb_lower_{indicator['window']}"
+                if current_price < self.data.iloc[i][lower]:
+                    signals.append('buy')
+                elif current_price > self.data.iloc[i][upper]:
+                    signals.append('sell')
+                else:
+                    signals.append(None)
+
+            elif ind_type == 'MACD':
+                macd = self.data.iloc[i]['macd']
+                signal = self.data.iloc[i]['macd_signal']
+                hist = self.data.iloc[i]['macd_hist']
+                prev_hist = self.data.iloc[i - 1]['macd_hist']
+
+                if macd > signal and hist > 0 and prev_hist <= 0:
+                    signals.append('buy')
+                elif macd < signal and hist < 0 and prev_hist >= 0:
+                    signals.append('sell')
+                else:
+                    signals.append(None)
+
+        # Фильтрация None значений
+        valid_signals = [s for s in signals if s is not None]
+        if not valid_signals:
+            return None
+
+        # Применяем логику объединения
+        if self.strategy_params['logic'] == 'AND':
+            if all(s == 'buy' for s in valid_signals):
+                return 'buy'
+            elif all(s == 'sell' for s in valid_signals):
+                return 'sell'
+        else:  # OR логика
+            if 'buy' in valid_signals:
+                return 'buy'
+            elif 'sell' in valid_signals:
+                return 'sell'
+
+        return None
+
     def run_backtest(self):
-        """Запуск бэктеста"""
+        """Запуск бэктеста с комбинированными индикаторами"""
         if self.data is None:
             print("Данные не загружены")
             return
@@ -122,31 +275,8 @@ class Backtester:
         self.trades = []
 
         for i in range(1, len(self.data)):
+            signal = self.get_signal(i)
             current_price = self.data.iloc[i]['Close']
-            prev_price = self.data.iloc[i - 1]['Close']
-
-            # Сигналы для разных индикаторов
-            signal = None
-            if self.strategy_params['indicator'] == 'SMA' or self.strategy_params['indicator'] == 'EMA':
-                if self.data.iloc[i - 1]['Close'] < self.data.iloc[i - 1]['indicator'] and current_price > \
-                        self.data.iloc[i]['indicator']:
-                    signal = 'buy'
-                elif self.data.iloc[i - 1]['Close'] > self.data.iloc[i - 1]['indicator'] and current_price < \
-                        self.data.iloc[i]['indicator']:
-                    signal = 'sell'
-
-            elif self.strategy_params['indicator'] == 'RSI':
-                if self.data.iloc[i - 1]['indicator'] < self.strategy_params['oversold'] and current_price > prev_price:
-                    signal = 'buy'
-                elif self.data.iloc[i - 1]['indicator'] > self.strategy_params[
-                    'overbought'] and current_price < prev_price:
-                    signal = 'sell'
-
-            elif self.strategy_params['indicator'] == 'Bollinger':
-                if current_price < self.data.iloc[i]['indicator_lower']:
-                    signal = 'buy'
-                elif current_price > self.data.iloc[i]['indicator_upper']:
-                    signal = 'sell'
 
             # Логика торговли
             if signal == 'buy' and position == 0 and capital > 0:
@@ -261,24 +391,14 @@ class Backtester:
         self.plot_results()
 
     def plot_results(self):
-        """Визуализация результатов"""
+        """Визуализация результатов с несколькими индикаторами"""
         try:
-            plt.figure(figsize=(12, 6))
+            plt.figure(figsize=(14, 8))
+            n_plots = 2 + len(self.strategy_params['indicators'])
 
-            # График цены и индикатора
-            plt.subplot(2, 1, 1)
+            # График цены и сделок
+            plt.subplot(n_plots, 1, 1)
             plt.plot(self.data.index, self.data['Close'], label='Цена закрытия')
-
-            if self.strategy_params['indicator'] in ['SMA', 'EMA']:
-                plt.plot(self.data.index, self.data['indicator'],
-                         label=f"{self.strategy_params['indicator']}({self.strategy_params['window']})")
-            elif self.strategy_params['indicator'] == 'RSI':
-                plt.plot(self.data.index, self.data['indicator'], label='RSI')
-                plt.axhline(y=self.strategy_params['overbought'], color='r', linestyle='--')
-                plt.axhline(y=self.strategy_params['oversold'], color='g', linestyle='--')
-            elif self.strategy_params['indicator'] == 'Bollinger':
-                plt.plot(self.data.index, self.data['indicator_upper'], label='Верхняя полоса')
-                plt.plot(self.data.index, self.data['indicator_lower'], label='Нижняя полоса')
 
             # Отметки сделок
             buy_dates = [t['date'] for t in self.trades if t['type'] == 'buy']
@@ -295,14 +415,48 @@ class Backtester:
             plt.title('График цены и торговых сигналов')
             plt.legend()
 
-            # График стоимости портфеля (исправлено)
-            plt.subplot(2, 1, 2)
+            # График стоимости портфеля
+            plt.subplot(n_plots, 1, 2)
             plt.plot(self.data.index[1:], self.portfolio_values[1:], label='Стоимость портфеля')
             plt.title('Динамика портфеля')
-            plt.xlabel('Дата')
             plt.ylabel('Стоимость ($)')
             plt.legend()
 
+            # Графики индикаторов
+            for idx, indicator in enumerate(self.strategy_params['indicators'], 3):
+                plt.subplot(n_plots, 1, idx)
+                ind_type = indicator['type']
+
+                if ind_type in ['SMA', 'EMA']:
+                    col = f"{ind_type.lower()}_{indicator['window']}"
+                    plt.plot(self.data.index, self.data[col],
+                             label=f"{ind_type}({indicator['window']})")
+                    plt.ylabel(f"{ind_type} Value")
+
+                elif ind_type == 'RSI':
+                    col = f"rsi_{indicator['window']}"
+                    plt.plot(self.data.index, self.data[col], label='RSI')
+                    plt.axhline(y=indicator['overbought'], color='r', linestyle='--')
+                    plt.axhline(y=indicator['oversold'], color='g', linestyle='--')
+                    plt.ylabel('RSI Value')
+
+                elif ind_type == 'Bollinger':
+                    upper = f"bb_upper_{indicator['window']}"
+                    lower = f"bb_lower_{indicator['window']}"
+                    plt.plot(self.data.index, self.data[upper], label='Верхняя полоса')
+                    plt.plot(self.data.index, self.data[lower], label='Нижняя полоса')
+                    plt.ylabel('Bollinger Bands')
+
+                elif ind_type == 'MACD':
+                    plt.plot(self.data.index, self.data['macd'], label='MACD')
+                    plt.plot(self.data.index, self.data['macd_signal'], label='Signal')
+                    plt.bar(self.data.index, self.data['macd_hist'],
+                            label='Histogram', color='gray', alpha=0.5)
+                    plt.ylabel('MACD')
+
+                plt.legend()
+
+            plt.xlabel('Дата')
             plt.tight_layout()
 
             # Проверка доступности GUI
@@ -330,9 +484,9 @@ def main():
         if backtester.load_data_from_json(filename):
             break
 
-    # Выбор стратегии
+    # Выбор индикаторов
     while True:
-        if backtester.select_indicator():
+        if backtester.select_indicators():
             break
 
     # Настройка параметров
@@ -346,4 +500,3 @@ if __name__ == "__main__":
     # Явно устанавливаем бэкенд для отображения графиков
     matplotlib.use('TkAgg')  # Можно также использовать 'Qt5Agg'
     main()
-
