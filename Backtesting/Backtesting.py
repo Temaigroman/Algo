@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 from ta.trend import SMAIndicator, EMAIndicator
 from ta.momentum import RSIIndicator
 from ta.volatility import BollingerBands
+import matplotlib
 
 
 class Backtester:
@@ -261,47 +262,60 @@ class Backtester:
 
     def plot_results(self):
         """Визуализация результатов"""
-        plt.figure(figsize=(12, 6))
+        try:
+            plt.figure(figsize=(12, 6))
 
-        # График цены и индикатора
-        plt.subplot(2, 1, 1)
-        plt.plot(self.data.index, self.data['Close'], label='Цена закрытия')
+            # График цены и индикатора
+            plt.subplot(2, 1, 1)
+            plt.plot(self.data.index, self.data['Close'], label='Цена закрытия')
 
-        if self.strategy_params['indicator'] == 'SMA' or self.strategy_params['indicator'] == 'EMA':
-            plt.plot(self.data.index, self.data['indicator'],
-                     label=f"{self.strategy_params['indicator']}({self.strategy_params['window']})")
-        elif self.strategy_params['indicator'] == 'RSI':
-            plt.plot(self.data.index, self.data['indicator'], label='RSI')
-            plt.axhline(y=self.strategy_params['overbought'], color='r', linestyle='--')
-            plt.axhline(y=self.strategy_params['oversold'], color='g', linestyle='--')
-        elif self.strategy_params['indicator'] == 'Bollinger':
-            plt.plot(self.data.index, self.data['indicator_upper'], label='Верхняя полоса')
-            plt.plot(self.data.index, self.data['indicator_lower'], label='Нижняя полоса')
+            if self.strategy_params['indicator'] in ['SMA', 'EMA']:
+                plt.plot(self.data.index, self.data['indicator'],
+                         label=f"{self.strategy_params['indicator']}({self.strategy_params['window']})")
+            elif self.strategy_params['indicator'] == 'RSI':
+                plt.plot(self.data.index, self.data['indicator'], label='RSI')
+                plt.axhline(y=self.strategy_params['overbought'], color='r', linestyle='--')
+                plt.axhline(y=self.strategy_params['oversold'], color='g', linestyle='--')
+            elif self.strategy_params['indicator'] == 'Bollinger':
+                plt.plot(self.data.index, self.data['indicator_upper'], label='Верхняя полоса')
+                plt.plot(self.data.index, self.data['indicator_lower'], label='Нижняя полоса')
 
-        # Отметки сделок
-        buy_dates = [t['date'] for t in self.trades if t['type'] == 'buy']
-        buy_prices = [t['price'] for t in self.trades if t['type'] == 'buy']
-        plt.scatter(buy_dates, buy_prices, color='g', label='Покупка', marker='^')
+            # Отметки сделок
+            buy_dates = [t['date'] for t in self.trades if t['type'] == 'buy']
+            buy_prices = [t['price'] for t in self.trades if t['type'] == 'buy']
+            plt.scatter(buy_dates, buy_prices, color='g', label='Покупка', marker='^')
 
-        sell_dates = [t['date'] for t in self.trades if t['type'] in ['sell', 'stop_loss', 'take_profit', 'close']]
-        sell_prices = [t['price'] for t in self.trades if t['type'] in ['sell', 'stop_loss', 'take_profit', 'close']]
-        colors = ['r' if t['profit'] < 0 else 'g' for t in self.trades if
-                  t['type'] in ['sell', 'stop_loss', 'take_profit', 'close']]
-        plt.scatter(sell_dates, sell_prices, color=colors, label='Продажа', marker='v')
+            sell_dates = [t['date'] for t in self.trades if t['type'] in ['sell', 'stop_loss', 'take_profit', 'close']]
+            sell_prices = [t['price'] for t in self.trades if
+                           t['type'] in ['sell', 'stop_loss', 'take_profit', 'close']]
+            colors = ['r' if t['profit'] < 0 else 'g' for t in self.trades
+                      if t['type'] in ['sell', 'stop_loss', 'take_profit', 'close']]
+            plt.scatter(sell_dates, sell_prices, color=colors, label='Продажа', marker='v')
 
-        plt.title('График цены и торговых сигналов')
-        plt.legend()
+            plt.title('График цены и торговых сигналов')
+            plt.legend()
 
-        # График стоимости портфеля
-        plt.subplot(2, 1, 2)
-        plt.plot(self.data.index, self.portfolio_values[1:], label='Стоимость портфеля')
-        plt.title('Динамика портфеля')
-        plt.xlabel('Дата')
-        plt.ylabel('Стоимость ($)')
-        plt.legend()
+            # График стоимости портфеля (исправлено)
+            plt.subplot(2, 1, 2)
+            plt.plot(self.data.index[1:], self.portfolio_values[1:], label='Стоимость портфеля')
+            plt.title('Динамика портфеля')
+            plt.xlabel('Дата')
+            plt.ylabel('Стоимость ($)')
+            plt.legend()
 
-        plt.tight_layout()
-        plt.show()
+            plt.tight_layout()
+
+            # Проверка доступности GUI
+            if matplotlib.get_backend().lower() in ['agg', 'pdf', 'svg', 'ps']:
+                plt.savefig('backtest_results.png')
+                print("\nГрафик сохранен в backtest_results.png")
+            else:
+                plt.show()
+
+        except Exception as e:
+            print(f"\nОшибка при построении графиков: {e}")
+            plt.savefig('backtest_results.png')
+            print("График сохранен в backtest_results.png")
 
 
 def main():
@@ -329,4 +343,6 @@ def main():
 
 
 if __name__ == "__main__":
+    # Явно устанавливаем бэкенд для отображения графиков
+    matplotlib.use('TkAgg')  # Можно также использовать 'Qt5Agg'
     main()
