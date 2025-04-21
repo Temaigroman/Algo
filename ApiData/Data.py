@@ -1,6 +1,10 @@
 import yfinance as yf
 import pandas as pd
 from datetime import datetime
+import json
+import os
+import subprocess
+import sys
 
 
 class YahooFinanceHistory:
@@ -70,6 +74,31 @@ class YahooFinanceHistory:
         except Exception as e:
             print(f"Ошибка при сохранении: {e}")
 
+    def save_to_json(self, filename="stock_data.json"):
+        """Сохраняет данные в JSON-файл."""
+        if self.data is None:
+            print("Нет данных для сохранения.")
+            return False
+
+        try:
+            # Конвертируем DataFrame в JSON (ориентируясь на записи)
+            json_data = self.data.reset_index().to_json(
+                filename,
+                orient='records',
+                date_format='iso'
+            )
+            print(f"Данные сохранены в {os.path.abspath(filename)}")
+            return True
+        except Exception as e:
+            print(f"Ошибка при сохранении JSON: {e}")
+            return False
+
+    def get_data_as_json_str(self):
+        """Возвращает данные в виде JSON-строки (для передачи)."""
+        if self.data is None:
+            return None
+        return self.data.reset_index().to_json(orient='records', date_format='iso')
+
 
 def main():
     print("Yahoo Finance Historical Data Service")
@@ -82,9 +111,11 @@ def main():
         print("1. Получить исторические данные")
         print("2. Просмотреть данные")
         print("3. Сохранить данные в CSV")
-        print("4. Выход")
+        print("4. Сохранить данные в JSON")
+        print("5. Передать данные в другой скрипт")
+        print("6. Выход")
 
-        choice = input("Выберите действие (1-4): ")
+        choice = input("Выберите действие (1-6): ")
 
         if choice == '1':
             ticker = input("Введите тикер (например, AAPL): ").upper()
@@ -114,6 +145,30 @@ def main():
                 print("Нет данных для сохранения.")
 
         elif choice == '4':
+            if service.data is not None:
+                filename = input("Введите имя JSON-файла (например, data.json): ") or "data.json"
+                service.save_to_json(filename)
+            else:
+                print("Нет данных для сохранения.")
+
+        elif choice == '5':
+            if service.data is not None:
+                json_str = service.get_data_as_json_str()
+                if json_str:
+                    try:
+                        subprocess.run(
+                            ["python", "analyzer.py", json_str],
+                            check=True
+                        )
+                        print("Данные успешно переданы в analyzer.py")
+                    except Exception as e:
+                        print(f"Ошибка при передаче данных: {e}")
+                else:
+                    print("Не удалось преобразовать данные в JSON")
+            else:
+                print("Нет данных для передачи.")
+
+        elif choice == '6':
             print("Выход из программы.")
             break
 
