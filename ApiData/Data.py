@@ -10,23 +10,43 @@ import sys
 class YahooFinanceHistory:
     def __init__(self):
         self.data = None
+        self.available_intervals = {
+            '1m': '1 минута',
+            '2m': '2 минуты',
+            '5m': '5 минут',
+            '15m': '15 минут',
+            '30m': '30 минут',
+            '60m': '60 минут',
+            '90m': '90 минут',
+            '1h': '1 час',
+            '1d': '1 день',
+            '5d': '5 дней',
+            '1wk': '1 неделя',
+            '1mo': '1 месяц',
+            '3mo': '3 месяца'
+        }
 
-    def get_historical_data(self, ticker, start_date, end_date=None):
+    def get_historical_data(self, ticker, start_date, end_date=None, interval='1d'):
         """
         Получает исторические данные для указанного тикера за заданный период
 
         :param ticker: Символ акции (например, 'AAPL')
         :param start_date: Начальная дата в формате 'YYYY-MM-DD' или datetime
         :param end_date: Конечная дата (по умолчанию текущая дата)
+        :param interval: Таймфрейм данных (по умолчанию '1d' - дневные данные)
         :return: DataFrame с историческими данными
         """
         if end_date is None:
             end_date = datetime.now().strftime('%Y-%m-%d')
 
+        if interval not in self.available_intervals:
+            print(f"Неподдерживаемый интервал. Доступные интервалы: {', '.join(self.available_intervals.keys())}")
+            return None
+
         try:
             # Загружаем данные
             stock = yf.Ticker(ticker)
-            self.data = stock.history(start=start_date, end=end_date)
+            self.data = stock.history(start=start_date, end=end_date, interval=interval)
 
             if self.data.empty:
                 print(f"Не удалось получить данные для {ticker}. Проверьте тикер и даты.")
@@ -122,9 +142,15 @@ def main():
             start_date = input("Введите начальную дату (YYYY-MM-DD): ")
             end_date = input("Введите конечную дату (YYYY-MM-DD, оставьте пустым для текущей даты): ") or None
 
-            data = service.get_historical_data(ticker, start_date, end_date)
+            print("\nДоступные таймфреймы:")
+            for key, value in service.available_intervals.items():
+                print(f"{key}: {value}")
+
+            interval = input("Введите таймфрейм (по умолчанию '1d'): ") or '1d'
+
+            data = service.get_historical_data(ticker, start_date, end_date, interval)
             if data is not None:
-                print(f"\nУспешно получены данные для {ticker}")
+                print(f"\nУспешно получены данные для {ticker} с интервалом {interval}")
 
         elif choice == '2':
             if service.data is not None:
