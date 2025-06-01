@@ -1,6 +1,7 @@
 from fastapi import FastAPI, Request, Form
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from fastapi.responses import HTMLResponse, JSONResponse
 from pathlib import Path
 import os
 import json
@@ -17,7 +18,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 STATIC_DIR = BASE_DIR / "front" / "static"
 TEMPLATES_DIR = BASE_DIR / "front" / "templates"
 
-# Проверка существования путей (для отладки)
+# Проверка существования путей
 print(f"Static directory exists: {STATIC_DIR.exists()}")
 print(f"Templates directory exists: {TEMPLATES_DIR.exists()}")
 
