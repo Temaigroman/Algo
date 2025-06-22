@@ -1,78 +1,62 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Backtesting Tool</title>
-    <link rel="stylesheet" href="/static/style.css">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Исторические данные фондового рынка</title>
+    <link rel="stylesheet" href="../static/style.css">
 </head>
 <body>
     <div class="container">
-        <h1>📈 Backtesting Tool</h1>
+        <h1>Исторические данные фондового рынка</h1>
+        <button id="showFormBtn" class="btn">Получить исторические данные</button>
 
-        <!-- Форма для загрузки данных -->
-        <div class="card">
-            <h2>1. Получить данные</h2>
-            <form id="dataForm">
-                <div class="form-group">
-                    <label for="ticker">Тикер (например, AAPL):</label>
-                    <input type="text" id="ticker" name="ticker" required>
-                </div>
+        <div id="dataForm" class="form-container hidden">
+            <div class="form-group">
+                <label for="ticker">Тикер:</label>
+                <input type="text" id="ticker" placeholder="Например: AAPL" required>
+            </div>
 
-                <div class="form-group">
-                    <label for="start_date">Начальная дата:</label>
-                    <input type="date" id="start_date" name="start_date" required>
-                </div>
+            <div class="form-group">
+                <label for="startDate">Начальная дата:</label>
+                <input type="date" id="startDate" required>
+            </div>
 
-                <div class="form-group">
-                    <label for="end_date">Конечная дата:</label>
-                    <input type="date" id="end_date" name="end_date">
-                </div>
+            <div class="form-group">
+                <label for="endDate">Конечная дата:</label>
+                <input type="date" id="endDate" required>
+            </div>
 
-                <button type="submit">Загрузить данные</button>
-            </form>
+            <div class="form-group">
+                <label for="timeframe">Таймфрейм:</label>
+                <select id="timeframe">
+                    <option value="1m">1 минута</option>
+                    <option value="2m">2 минуты</option>
+                    <option value="5m">5 минут</option>
+                    <option value="15m">15 минут</option>
+                    <option value="30m">30 минут</option>
+                    <option value="60m">60 минут</option>
+                    <option value="90m">90 минут</option>
+                    <option value="1h">1 час</option>
+                    <option value="1d" selected>1 день</option>
+                    <option value="5d">5 дней</option>
+                    <option value="1wk">1 неделя</option>
+                    <option value="1mo">1 месяц</option>
+                    <option value="3mo">3 месяца</option>
+                </select>
+            </div>
+
+            <button id="fetchDataBtn" class="btn">Получить исторические данные</button>
         </div>
 
-        <!-- Форма для бэктеста -->
-        <div class="card">
-            <h2>2. Настройки бэктеста</h2>
-            <form id="backtestForm">
-                <div class="form-group">
-                    <label for="strategy">Стратегия:</label>
-                    <select id="strategy" name="strategy">
-                        <option value="SMA">SMA Crossover</option>
-                        <option value="RSI">RSI Strategy</option>
-                        <option value="MACD">MACD</option>
-                    </select>
-                </div>
-
-                <div class="form-group">
-                    <label for="initial_capital">Начальный капитал ($):</label>
-                    <input type="number" id="initial_capital" name="initial_capital" value="10000" min="1">
-                </div>
-
-                <div class="form-group">
-                    <label for="stop_loss">Стоп-лосс (%):</label>
-                    <input type="number" id="stop_loss" name="stop_loss" value="5" min="0" max="100" step="0.1">
-                </div>
-
-                <div class="form-group">
-                    <label for="take_profit">Тейк-профит (%):</label>
-                    <input type="number" id="take_profit" name="take_profit" value="10" min="0" max="100" step="0.1">
-                </div>
-
-                <button type="submit">Запустить бэктест</button>
-            </form>
+        <div id="results" class="hidden">
+            <h2>Результаты</h2>
+            <div id="dataTableContainer"></div>
         </div>
 
-        <!-- Результаты -->
-        <div class="card">
-            <h2>3. Результаты</h2>
-            <canvas id="chart"></canvas>
-            <div id="stats"></div>
-        </div>
+        <div id="error" class="error hidden"></div>
     </div>
 
-    <script src="/static/script.js"></script>
+    <script src="../static/script.js"></script>
 </body>
 </html>
