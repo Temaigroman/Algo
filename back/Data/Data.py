@@ -201,6 +201,27 @@ def main():
         else:
             print("Некорректный выбор. Попробуйте снова.")
 
+    def get_historical_data(self, ticker, start_date, end_date=None, interval='1d'):
+        """Модифицированная версия для работы с Flask"""
+        if end_date is None:
+            end_date = datetime.now().strftime('%Y-%m-%d')
+
+        if interval not in self.available_intervals:
+            raise ValueError(
+                f"Неподдерживаемый интервал. Доступные интервалы: {', '.join(self.available_intervals.keys())}")
+
+        try:
+            stock = yf.Ticker(ticker)
+            self.data = stock.history(start=start_date, end=end_date, interval=interval)
+
+            if self.data.empty:
+                raise ValueError(f"Не удалось получить данные для {ticker}. Проверьте тикер и даты.")
+
+            return self.data
+
+        except Exception as e:
+            raise Exception(f"Произошла ошибка: {e}")
+
 
 if __name__ == "__main__":
     main()

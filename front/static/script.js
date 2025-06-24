@@ -2,6 +2,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const showFormBtn = document.getElementById('showFormBtn');
     const dataForm = document.getElementById('dataForm');
     const fetchDataBtn = document.getElementById('fetchDataBtn');
+    const downloadJsonBtn = document.getElementById('downloadJsonBtn');
     const tickerInput = document.getElementById('ticker');
     const startDateInput = document.getElementById('startDate');
     const endDateInput = document.getElementById('endDate');
@@ -9,99 +10,105 @@ document.addEventListener('DOMContentLoaded', function() {
     const resultsDiv = document.getElementById('results');
     const errorDiv = document.getElementById('error');
     const dataTableContainer = document.getElementById('dataTableContainer');
-    
-    // Устанавливаем текущую дату по умолчанию для конечной даты
+
+    // Устанавливаем текущую дату по умолчанию
     const today = new Date().toISOString().split('T')[0];
     endDateInput.value = today;
-    
-    // Показываем форму при нажатии на кнопку
+
+    // Показываем форму
     showFormBtn.addEventListener('click', function() {
         dataForm.classList.toggle('hidden');
         if (!dataForm.classList.contains('hidden')) {
             tickerInput.focus();
         }
     });
-    
-    // Получаем данные при нажатии на кнопку
-    fetchDataBtn.addEventListener('click', function() {
+
+    // Получаем данные
+    fetchDataBtn.addEventListener('click', async function() {
         const ticker = tickerInput.value.trim().toUpperCase();
         const startDate = startDateInput.value;
         const endDate = endDateInput.value;
         const timeframe = timeframeSelect.value;
-        
-        // Валидация
+
         if (!ticker || !startDate || !endDate) {
             showError('Пожалуйста, заполните все поля');
             return;
         }
-        
+
         if (new Date(startDate) > new Date(endDate)) {
             showError('Начальная дата не может быть позже конечной даты');
             return;
         }
-        
-        // Здесь должен быть запрос к API для получения данных
-        // Для демонстрации используем моковые данные
-        fetchHistoricalData(ticker, startDate, endDate, timeframe);
-    });
-    
-    function fetchHistoricalData(ticker, startDate, endDate, timeframe) {
-        // В реальном приложении здесь должен быть fetch или axios запрос к API
-        // Например:
-        /*
-        fetch(`https://api.marketdata.com/v3/historical?ticker=${ticker}&start=${startDate}&end=${endDate}&timeframe=${timeframe}`)
-            .then(response => response.json())
-            .then(data => displayData(data))
-            .catch(error => showError('Ошибка при получении данных: ' + error.message));
-        */
-        
-        // Для демонстрации используем моковые данные
-        console.log(`Запрос данных для: ${ticker}, с ${startDate} по ${endDate}, таймфрейм: ${timeframe}`);
-        
-        // Имитация задержки запроса
-        setTimeout(() => {
-            // Моковые данные
-            const mockData = generateMockData(ticker, startDate, endDate, timeframe);
-            displayData(mockData);
-        }, 1000);
-    }
-    
-    function generateMockData(ticker, startDate, endDate, timeframe) {
-        const data = [];
-        const start = new Date(startDate);
-        const end = new Date(endDate);
-        
-        // Генерируем случайные данные для каждого дня в диапазоне
-        for (let date = new Date(start); date <= end; date.setDate(date.getDate() + 1)) {
-            const open = (100 + Math.random() * 50).toFixed(2);
-            const high = (parseFloat(open) + Math.random() * 10).toFixed(2);
-            const low = (parseFloat(open) - Math.random() * 10).toFixed(2);
-            const close = (parseFloat(low) + Math.random() * (parseFloat(high) - parseFloat(low))).toFixed(2);
-            const volume = Math.floor(Math.random() * 10000000);
-            
-            data.push({
-                date: date.toISOString().split('T')[0],
-                open,
-                high,
-                low,
-                close,
-                volume
+
+        try {
+            const response = await fetch('/get-historical-data', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    ticker: ticker,
+                    startDate: startDate,
+                    endDate: endDate,
+                    timeframe: timeframe
+                })
             });
+
+            const data = await response.json();
+
+            if (data.error) {
+                showError(data.error);
+                return;
+            }
+
+            displayData(data);
+        } catch (error) {
+            showError('Ошибка при получении данных: ' + error.message);
         }
-        
-        return {
-            ticker,
-            startDate,
-            endDate,
-            timeframe,
-            data
-        };
-    }
-    
+    });
+
+    // Скачивание JSON
+    downloadJsonBtn.addEventListener('click', async function() {
+        if (!dataTableContainer.innerHTML) {
+            showError('Нет данных для скачивания');
+            return;
+        }
+
+        const ticker = tickerInput.value.trim().toUpperCase();
+        const startDate = startDateInput.value;
+        const endDate = endDateInput.value;
+        const timeframe = timeframeSelect.value;
+
+        try {
+            const response = await fetch('/download-json', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    ticker: ticker,
+                    startDate: startDate,
+                    endDate: endDate,
+                    timeframe: timeframe,
+                    data: JSON.parse(dataTableContainer.dataset.rawData || '[]')
+                })
+            });
+
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${ticker}_${startDate}_to_${endDate}.json`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+        } catch (error) {
+            showError('Ошибка при скачивании: ' + error.message);
+        }
+    });
+
     function displayData(data) {
         errorDiv.classList.add('hidden');
-        
-        // Создаем таблицу с данными
+
+        // Сохраняем сырые данные для скачивания
+        dataTableContainer.dataset.rawData = JSON.stringify(data.data);
+
         let tableHTML = `
             <h3>${data.ticker} с ${data.startDate} по ${data.endDate} (${getTimeframeLabel(data.timeframe)})</h3>
             <table>
@@ -117,16 +124,16 @@ document.addEventListener('DOMContentLoaded', function() {
                 </thead>
                 <tbody>
         `;
-        
+
         data.data.forEach(item => {
             tableHTML += `
                 <tr>
-                    <td>${item.date}</td>
-                    <td>${item.open}</td>
-                    <td>${item.high}</td>
-                    <td>${item.low}</td>
-                    <td>${item.close}</td>
-                    <td>${item.volume.toLocaleString()}</td>
+                    <td>${item.Date || item.date}</td>
+                    <td>${item.Open || item.open}</td>
+                    <td>${item.High || item.high}</td>
+                    <td>${item.Low || item.low}</td>
+                    <td>${item.Close || item.close}</td>
+                    <td>${(item.Volume || item.volume).toLocaleString()}</td>
                 </tr>
             `;
         });
