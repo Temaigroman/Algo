@@ -104,48 +104,61 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     function displayData(data) {
-        errorDiv.classList.add('hidden');
+    errorDiv.classList.add('hidden');
 
-        // Сохраняем сырые данные для скачивания
-        dataTableContainer.dataset.rawData = JSON.stringify(data.data);
+    // Сохраняем сырые данные для скачивания
+    dataTableContainer.dataset.rawData = JSON.stringify(data.data);
 
-        let tableHTML = `
-            <h3>${data.ticker} с ${data.startDate} по ${data.endDate} (${getTimeframeLabel(data.timeframe)})</h3>
-            <table>
-                <thead>
-                    <tr>
-                        <th>Дата</th>
-                        <th>Открытие</th>
-                        <th>Максимум</th>
-                        <th>Минимум</th>
-                        <th>Закрытие</th>
-                        <th>Объем</th>
-                    </tr>
-                </thead>
-                <tbody>
-        `;
-
-        data.data.forEach(item => {
-            tableHTML += `
+    let tableHTML = `
+        <h3>${data.ticker} с ${data.startDate} по ${data.endDate} (${getTimeframeLabel(data.timeframe)})</h3>
+        <table>
+            <thead>
                 <tr>
-                    <td>${item.Date || item.date}</td>
-                    <td>${item.Open || item.open}</td>
-                    <td>${item.High || item.high}</td>
-                    <td>${item.Low || item.low}</td>
-                    <td>${item.Close || item.close}</td>
-                    <td>${(item.Volume || item.volume).toLocaleString()}</td>
+                    <th>Дата</th>
+                    <th>Открытие</th>
+                    <th>Максимум</th>
+                    <th>Минимум</th>
+                    <th>Закрытие</th>
+                    <th>Объем</th>
                 </tr>
-            `;
-        });
-        
+            </thead>
+            <tbody>
+    `;
+
+    data.data.forEach(item => {
+        // Добавляем проверки на undefined/null и форматирование
+        const formatValue = (value) => {
+            if (value === null || value === undefined) return 'N/A';
+            if (typeof value === 'number') {
+                // Форматируем числа (цену и объем по-разному)
+                if (item.hasOwnProperty('Volume') || item.hasOwnProperty('volume')) {
+                    return value.toLocaleString();
+                }
+                return value.toFixed(2);
+            }
+            return value;
+        };
+
         tableHTML += `
-                </tbody>
-            </table>
+            <tr>
+                <td>${item.Date || item.date || 'N/A'}</td>
+                <td>${formatValue(item.Open || item.open)}</td>
+                <td>${formatValue(item.High || item.high)}</td>
+                <td>${formatValue(item.Low || item.low)}</td>
+                <td>${formatValue(item.Close || item.close)}</td>
+                <td>${formatValue(item.Volume || item.volume)}</td>
+            </tr>
         `;
-        
-        dataTableContainer.innerHTML = tableHTML;
-        resultsDiv.classList.remove('hidden');
-    }
+    });
+
+    tableHTML += `
+            </tbody>
+        </table>
+    `;
+
+    dataTableContainer.innerHTML = tableHTML;
+    resultsDiv.classList.remove('hidden');
+}
     
     function showError(message) {
         errorDiv.textContent = message;
