@@ -1,15 +1,23 @@
 import yfinance as yf
 import pandas as pd
-from datetime import datetime
+from datetime import datetime, timedelta
 import json
 import os
 import subprocess
 import sys
+import time
+import logging
+from typing import Optional, Union
+
+# Настройка логирования
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
 class YahooFinanceHistory:
     def __init__(self):
         self.data = None
+        self.last_request_time = None
         self.available_intervals = {
             '1m': '1 минута',
             '2m': '2 минуты',
@@ -26,202 +34,130 @@ class YahooFinanceHistory:
             '3mo': '3 месяца'
         }
 
-    def get_historical_data(self, ticker, start_date, end_date=None, interval='1d'):
-        """
-        Получает исторические данные для указанного тикера за заданный период
+        # Настройка yfinance
 
-        :param ticker: Символ акции (например, 'AAPL')
-        :param start_date: Начальная дата в формате 'YYYY-MM-DD' или datetime
+
+    def _rate_limit(self):
+        """Ограничение частоты запросов"""
+        if self.last_request_time:
+            elapsed = time.time() - self.last_request_time
+            if elapsed < 2:  # 2 секунды между запросами
+                time.sleep(2 - elapsed)
+        self.last_request_time = time.time()
+
+    def get_historical_data(
+            self,
+            ticker: str,
+            start_date: Union[str, datetime],
+            end_date: Union[str, datetime, None] = None,
+            interval: str = '1d'
+    ) -> Optional[pd.DataFrame]:
+        """
+        Улучшенный метод получения исторических данных с защитой от лимитов
+
+        :param ticker: Тикер акции (например 'AAPL')
+        :param start_date: Начальная дата (YYYY-MM-DD или datetime)
         :param end_date: Конечная дата (по умолчанию текущая дата)
-        :param interval: Таймфрейм данных (по умолчанию '1d' - дневные данные)
-        :return: DataFrame с историческими данными
+        :param interval: Таймфрейм данных
+        :return: DataFrame с данными или None при ошибке
         """
-        if end_date is None:
-            end_date = datetime.now().strftime('%Y-%m-%d')
-
-        if interval not in self.available_intervals:
-            print(f"Неподдерживаемый интервал. Доступные интервалы: {', '.join(self.available_intervals.keys())}")
-            return None
-
         try:
-            # Загружаем данные
-            stock = yf.Ticker(ticker)
-            self.data = stock.history(start=start_date, end=end_date, interval=interval)
+            self._rate_limit()
 
-            if self.data.empty:
-                print(f"Не удалось получить данные для {ticker}. Проверьте тикер и даты.")
+            # Преобразование дат
+            start_dt = pd.to_datetime(start_date)
+            end_dt = pd.to_datetime(end_date) if end_date else pd.to_datetime(datetime.now())
+
+            # Корректировка для однодневных запросов
+            if start_dt == end_dt:
+                start_dt = start_dt - timedelta(days=1)
+                logger.info(f"Adjusted date range: {start_dt} to {end_dt}")
+
+            # Проверка интервала
+            if interval not in self.available_intervals:
+                raise ValueError(
+                    f"Неподдерживаемый интервал. Доступные: {', '.join(self.available_intervals.keys())}"
+                )
+
+            logger.info(f"Requesting data for {ticker} ({start_dt.date()} to {end_dt.date()}, {interval})")
+
+            # Получение данных
+            data = yf.download(
+                tickers=ticker,
+                start=start_dt,
+                end=end_dt,
+                interval=interval,
+                progress=False,
+                threads=False,  # Отключаем многопоточность
+                auto_adjust=True
+            )
+
+            if data.empty:
+                logger.warning(f"No data returned for {ticker}. Possible reasons:")
+                logger.warning("- Market was closed in this period")
+                logger.warning("- Invalid ticker symbol")
+                logger.warning("- Too narrow date range")
                 return None
 
-            return self.data
+            self.data = data
+            logger.info(f"Successfully retrieved {len(data)} rows")
+            return data
 
         except Exception as e:
-            print(f"Произошла ошибка: {e}")
+            logger.error(f"Error fetching data for {ticker}: {str(e)}")
+            logger.error(traceback.format_exc())
             return None
 
-    def display_data(self, num_rows=10):
-        """
-        Отображает данные в консоли
-
-        :param num_rows: Количество строк для отображения
-        """
+    def display_data(self, num_rows: int = 10) -> None:
+        """Отображение данных с улучшенным форматированием"""
         if self.data is None:
-            print("Нет данных для отображения. Сначала получите данные.")
+            logger.warning("No data to display")
             return
 
-        print("\n" + "=" * 50)
-        print(f"Исторические данные (первые {num_rows} строк):")
-        print("=" * 50)
-        print(self.data.head(num_rows))
+        print("\n" + "=" * 80)
+        print(f"Исторические данные (первые {num_rows} строк):".center(80))
+        print("=" * 80)
+        print(self.data.head(num_rows).to_string())
 
-        print("\n" + "=" * 50)
-        print("Основная статистика:")
-        print("=" * 50)
-        print(self.data.describe())
+        print("\n" + "=" * 80)
+        print("Статистика:".center(80))
+        print("=" * 80)
+        print(self.data.describe().to_string())
 
-    def save_to_csv(self, filename):
-        """
-        Сохраняет данные в CSV файл
-
-        :param filename: Имя файла для сохранения
-        """
-        if self.data is None:
-            print("Нет данных для сохранения.")
-            return
-
+    def save_to_csv(self, filename: str) -> bool:
+        """Улучшенное сохранение в CSV"""
         try:
-            self.data.to_csv(filename)
-            print(f"Данные успешно сохранены в {filename}")
-        except Exception as e:
-            print(f"Ошибка при сохранении: {e}")
+            if self.data is None:
+                raise ValueError("Нет данных для сохранения")
 
-    def save_to_json(self, filename="stock_data.json"):
-        """Сохраняет данные в JSON-файл."""
-        if self.data is None:
-            print("Нет данных для сохранения.")
+            self.data.to_csv(filename)
+            logger.info(f"Данные сохранены в {os.path.abspath(filename)}")
+            return True
+        except Exception as e:
+            logger.error(f"Ошибка при сохранении CSV: {str(e)}")
             return False
 
+    def save_to_json(self, filename: str = "stock_data.json") -> bool:
+        """Улучшенное сохранение в JSON"""
         try:
-            # Конвертируем DataFrame в JSON (ориентируясь на записи)
+            if self.data is None:
+                raise ValueError("Нет данных для сохранения")
+
             json_data = self.data.reset_index().to_json(
                 filename,
                 orient='records',
-                date_format='iso'
+                date_format='iso',
+                indent=2
             )
-            print(f"Данные сохранены в {os.path.abspath(filename)}")
+            logger.info(f"Данные сохранены в {os.path.abspath(filename)}")
             return True
         except Exception as e:
-            print(f"Ошибка при сохранении JSON: {e}")
+            logger.error(f"Ошибка при сохранении JSON: {str(e)}")
             return False
 
-    def get_data_as_json_str(self):
-        """Возвращает данные в виде JSON-строки (для передачи)."""
+    def get_data_as_json_str(self) -> Optional[str]:
+        """Получение данных в виде JSON строки"""
         if self.data is None:
             return None
         return self.data.reset_index().to_json(orient='records', date_format='iso')
 
-
-def main():
-    print("Yahoo Finance Historical Data Service")
-    print("=" * 50)
-
-    service = YahooFinanceHistory()
-
-    while True:
-        print("\nМеню:")
-        print("1. Получить исторические данные")
-        print("2. Просмотреть данные")
-        print("3. Сохранить данные в CSV")
-        print("4. Сохранить данные в JSON")
-        print("5. Передать данные в другой скрипт")
-        print("6. Выход")
-
-        choice = input("Выберите действие (1-6): ")
-
-        if choice == '1':
-            ticker = input("Введите тикер (например, AAPL): ").upper()
-            start_date = input("Введите начальную дату (YYYY-MM-DD): ")
-            end_date = input("Введите конечную дату (YYYY-MM-DD, оставьте пустым для текущей даты): ") or None
-
-            print("\nДоступные таймфреймы:")
-            for key, value in service.available_intervals.items():
-                print(f"{key}: {value}")
-
-            interval = input("Введите таймфрейм (по умолчанию '1d'): ") or '1d'
-
-            data = service.get_historical_data(ticker, start_date, end_date, interval)
-            if data is not None:
-                print(f"\nУспешно получены данные для {ticker} с интервалом {interval}")
-
-        elif choice == '2':
-            if service.data is not None:
-                num_rows = input("Сколько строк отобразить (по умолчанию 10): ") or 10
-                try:
-                    service.display_data(int(num_rows))
-                except ValueError:
-                    print("Некорректное число. Используется значение по умолчанию.")
-                    service.display_data()
-            else:
-                print("Сначала получите данные.")
-
-        elif choice == '3':
-            if service.data is not None:
-                filename = input("Введите имя файла для сохранения (например, data.csv): ") or "data.csv"
-                service.save_to_csv(filename)
-            else:
-                print("Нет данных для сохранения.")
-
-        elif choice == '4':
-            if service.data is not None:
-                filename = input("Введите имя JSON-файла (например, data.json): ") or "data.json"
-                service.save_to_json(filename)
-            else:
-                print("Нет данных для сохранения.")
-
-        elif choice == '5':
-            if service.data is not None:
-                json_str = service.get_data_as_json_str()
-                if json_str:
-                    try:
-                        subprocess.run(
-                            ["python", "analyzer.py", json_str],
-                            check=True
-                        )
-                        print("Данные успешно переданы в analyzer.py")
-                    except Exception as e:
-                        print(f"Ошибка при передаче данных: {e}")
-                else:
-                    print("Не удалось преобразовать данные в JSON")
-            else:
-                print("Нет данных для передачи.")
-
-        elif choice == '6':
-            print("Выход из программы.")
-            break
-
-        else:
-            print("Некорректный выбор. Попробуйте снова.")
-
-    def get_historical_data(self, ticker, start_date, end_date=None, interval='1d'):
-        """Модифицированная версия для работы с Flask"""
-        if end_date is None:
-            end_date = datetime.now().strftime('%Y-%m-%d')
-
-        if interval not in self.available_intervals:
-            raise ValueError(
-                f"Неподдерживаемый интервал. Доступные интервалы: {', '.join(self.available_intervals.keys())}")
-
-        try:
-            stock = yf.Ticker(ticker)
-            self.data = stock.history(start=start_date, end=end_date, interval=interval)
-
-            if self.data.empty:
-                raise ValueError(f"Не удалось получить данные для {ticker}. Проверьте тикер и даты.")
-
-            return self.data
-
-        except Exception as e:
-            raise Exception(f"Произошла ошибка: {e}")
-
-
-if __name__ == "__main__":
-    main()
