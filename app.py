@@ -1,12 +1,21 @@
+import sys
+import os
 from flask import Flask, render_template, request, jsonify, send_file
-from Data import YahooFinanceHistory
 from datetime import datetime
 import json
-import os
 import logging
 import traceback
 
-app = Flask(__name__)
+# Настраиваем пути к шаблонам и статическим файлам
+app = Flask(__name__,
+            template_folder=os.path.join(os.path.dirname(__file__), 'front', 'templates'),
+            static_folder=os.path.join(os.path.dirname(__file__), 'front', 'static'))
+
+# Добавляем путь к папке back/Data в Python path
+sys.path.append(os.path.join(os.path.dirname(__file__), 'back', 'Data'))
+
+# Импортируем после настройки пути
+from Data import YahooFinanceHistory
 
 # Настройка логирования
 logging.basicConfig(level=logging.DEBUG)
@@ -62,10 +71,15 @@ def get_historical_data():
         logger.error(traceback.format_exc())
         return jsonify({
             "error": "Internal server error",
-            "details": str(e),
-            "traceback": traceback.format_exc()
+            "details": str(e)
         }), 500
 
 
 if __name__ == '__main__':
+    # Проверка путей
+    print("Путь к шаблонам:", app.template_folder)
+    print("Файлы в templates:", os.listdir(app.template_folder))
+    print("Путь к static:", app.static_folder)
+    print("Файлы в static:", os.listdir(app.static_folder))
+
     app.run(debug=True, host='0.0.0.0', port=5000)
