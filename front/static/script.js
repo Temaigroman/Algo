@@ -12,7 +12,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const errorDiv = document.getElementById('error');
     const dataTableContainer = document.getElementById('dataTableContainer');
 
-    // Установка дат по умолчанию
+    // Установка дат по умолчанию (MOEX хранит данные с 2020 года)
     endDateInput.value = new Date().toISOString().split('T')[0];
     startDateInput.value = new Date(new Date().setFullYear(new Date().getFullYear() - 1))
         .toISOString().split('T')[0];
@@ -23,42 +23,59 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // Получение данных
-    fetchDataBtn.addEventListener('click', async () => {
-        try {
-            const ticker = tickerInput.value.trim().toUpperCase();
-            const startDate = startDateInput.value;
-            const endDate = endDateInput.value;
-            const timeframe = timeframeSelect.value;
+fetchDataBtn.addEventListener('click', async () => {
+    try {
+        errorDiv.classList.add('hidden');
 
-            if (!ticker || !startDate || !endDate) {
-                showError('Пожалуйста, заполните все обязательные поля');
-                return;
-            }
+        const ticker = tickerInput.value.trim().toUpperCase();
+        const startDate = startDateInput.value;
+        const endDate = endDateInput.value;
+        const timeframe = timeframeSelect.value;
 
-            const response = await fetch('/api/historical', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    ticker,
-                    startDate,
-                    endDate,
-                    interval: timeframe
-                })
-            });
-
-            const data = await response.json();
-
-            if (!response.ok) {
-                showError(data.error || 'Ошибка при получении данных');
-                return;
-            }
-
-            displayData(data);
-        } catch (err) {
-            showError('Ошибка соединения: ' + err.message);
-            console.error('Fetch error:', err);
+        if (!ticker || !startDate || !endDate) {
+            showError('Пожалуйста, заполните все обязательные поля');
+            return;
         }
-    });
+
+        // Валидация дат
+        const minDate = new Date('2020-01-01');
+        const selectedStartDate = new Date(startDate);
+        if (selectedStartDate < minDate) {
+            showError('MOEX предоставляет данные только с 2020 года');
+            return;
+        }
+
+        const response = await fetch('/api/historical', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify({
+                ticker: ticker,
+                startDate: startDate,
+                endDate: endDate,
+                interval: timeframe
+            })
+        });
+
+        if (response.status === 404) {
+            const errorData = await response.json();
+            throw new Error(errorData.error || 'Данные не найдены для указанного тикера или периода');
+        }
+
+        if (!response.ok) {
+            throw new Error(`Ошибка сервера: ${response.status}`);
+        }
+
+        const data = await response.json();
+        displayData(data);
+
+    } catch (err) {
+        showError(err.message);
+        console.error('Fetch error:', err);
+    }
+});
 
     // Скачивание данных
     downloadJsonBtn.addEventListener('click', async () => {
@@ -70,7 +87,10 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const response = await fetch('/api/download', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                },
                 body: dataTableContainer.dataset.rawData
             });
 
@@ -82,97 +102,79 @@ document.addEventListener('DOMContentLoaded', () => {
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `stock_data_${new Date().toISOString()}.json`;
+            a.download = response.headers.get('Content-Disposition')?.split('filename=')[1] || 'moex_data.json';
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
         } catch (err) {
-            showError('Ошибка при скачивании: ' + err.message);
+            showError(err.message);
             console.error('Download error:', err);
         }
     });
 
     // Отображение данных
     function displayData(data) {
-    errorDiv.classList.add('hidden');
-    dataTableContainer.dataset.rawData = JSON.stringify(data);
+        errorDiv.classList.add('hidden');
+        dataTableContainer.dataset.rawData = JSON.stringify(data);
 
-    const tableHTML = `
-        <h3>${data.ticker} (${data.startDate} - ${data.endDate})</h3>
-        <div class="table-responsive">
-            <table class="table">
-                <thead>
-                    <tr>
-                        <th>Дата</th>
-                        <th>Открытие</th>
-                        <th>Максимум</th>
-                        <th>Минимум</th>
-                        <th>Закрытие</th>
-                        <th>Объем</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    ${data.data.map(item => {
-                        // Преобразуем ключи из формата ('Close', 'AAPL') в простые значения
-                        const transformedItem = {
-                            Date: item["('Date', '')"],
-                            Open: item["('Open', 'AAPL')"],
-                            High: item["('High', 'AAPL')"],
-                            Low: item["('Low', 'AAPL')"],
-                            Close: item["('Close', 'AAPL')"],
-                            Volume: item["('Volume', 'AAPL')"]
-                        };
-
-                        return `
+        const tableHTML = `
+            <h3>${data.ticker} (${data.startDate} - ${data.endDate}, ${data.interval})</h3>
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
+                        <tr>
+                            <th>Дата</th>
+                            <th>Открытие</th>
+                            <th>Максимум</th>
+                            <th>Минимум</th>
+                            <th>Закрытие</th>
+                            <th>Объем</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${data.data.map(item => `
                             <tr>
-                                <td>${formatDate(transformedItem.Date)}</td>
-                                <td>${formatNumber(transformedItem.Open)}</td>
-                                <td>${formatNumber(transformedItem.High)}</td>
-                                <td>${formatNumber(transformedItem.Low)}</td>
-                                <td>${formatNumber(transformedItem.Close)}</td>
-                                <td>${formatVolume(transformedItem.Volume)}</td>
+                                <td>${formatDate(item.Datetime || item.Date)}</td>
+                                <td>${formatNumber(item.Open)}</td>
+                                <td>${formatNumber(item.High)}</td>
+                                <td>${formatNumber(item.Low)}</td>
+                                <td>${formatNumber(item.Close)}</td>
+                                <td>${formatVolume(item.Volume)}</td>
                             </tr>
-                        `;
-                    }).join('')}
-                </tbody>
-            </table>
-        </div>
-    `;
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+        `;
 
-    dataTableContainer.innerHTML = tableHTML;
-    resultsDiv.classList.remove('hidden');
-}
-
-// Добавляем новую функцию для форматирования даты
-function formatDate(dateString) {
-    if (!dateString) return 'N/A';
-    try {
-        const date = new Date(dateString);
-        return date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
-    } catch {
-        return dateString; // Возвращаем как есть, если не удалось распарсить
+        dataTableContainer.innerHTML = tableHTML;
+        resultsDiv.classList.remove('hidden');
     }
-}
-
-// Обновляем formatNumber и formatVolume
-function formatNumber(value) {
-    if (value === null || value === undefined) return 'N/A';
-    return Number(value).toFixed(2);
-}
-
-function formatVolume(value) {
-    if (value === null || value === undefined) return 'N/A';
-    return parseInt(value).toLocaleString();
-}
 
     // Вспомогательные функции
+    function formatDate(dateString) {
+        if (!dateString) return 'N/A';
+        try {
+            const date = new Date(dateString);
+            return date.toLocaleDateString('ru-RU') +
+                (date.getHours() ? ' ' + date.toLocaleTimeString('ru-RU') : '');
+        } catch {
+            return dateString;
+        }
+    }
+
     function formatNumber(value) {
-        return value?.toFixed?.(2) ?? 'N/A';
+        if (value === null || value === undefined) return 'N/A';
+        return Number(value).toLocaleString('ru-RU', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2
+        });
     }
 
     function formatVolume(value) {
-        return value?.toLocaleString?.() ?? 'N/A';
+        if (value === null || value === undefined) return 'N/A';
+        return parseInt(value).toLocaleString('ru-RU');
     }
 
     function showError(message) {

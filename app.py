@@ -16,7 +16,7 @@ sys.path.append(os.path.join(BASE_DIR, 'back', 'Data'))
 app = Flask(__name__,
             template_folder=os.path.join(BASE_DIR, 'front', 'templates'),
             static_folder=os.path.join(BASE_DIR, 'front', 'static'))
-CORS(app)
+CORS(app)  # Разрешаем все CORS-запросы
 
 # Настройка логирования
 log_handler = RotatingFileHandler('app.log', maxBytes=100000, backupCount=3)
@@ -26,22 +26,43 @@ log_handler.setFormatter(logging.Formatter(
 app.logger.addHandler(log_handler)
 app.logger.setLevel(logging.INFO)
 
-# Проверка существования папок
-print("Template folder exists:", os.path.exists(app.template_folder))
-print("Static folder exists:", os.path.exists(app.static_folder))
-
 # Импорт после настройки путей
-from Data import YahooFinanceHistory
-service = YahooFinanceHistory()
+from Data import MoexAlgoHistory
+
+service = MoexAlgoHistory()
+
+
+# CORS предварительные запросы
+@app.before_request
+def handle_preflight():
+    if request.method == "OPTIONS":
+        response = make_response()
+        response.headers.add("Access-Control-Allow-Origin", "*")
+        response.headers.add("Access-Control-Allow-Headers", "*")
+        response.headers.add("Access-Control-Allow-Methods", "*")
+        return response
+
+
+@app.after_request
+def after_request(response):
+    response.headers.add('Access-Control-Allow-Origin', '*')
+    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+    response.headers.add('Access-Control-Allow-Methods', 'GET,PUT,POST,DELETE,OPTIONS')
+    return response
+
 
 @app.route('/')
 def index():
     """Главная страница приложения"""
     return render_template('index.html')
 
-@app.route('/api/historical', methods=['POST'])
+
+@app.route('/api/historical', methods=['POST', 'OPTIONS'])
 def get_historical_data():
     try:
+        if request.method == 'OPTIONS':
+            return _build_cors_preflight_response()
+
         data = request.get_json()
         app.logger.info(f"Request data: {data}")
 
@@ -56,8 +77,12 @@ def get_historical_data():
 
         # Получение данных
         df = service.get_historical_data(ticker, start_date, end_date, interval)
-        if df is None or df.empty:
-            return jsonify({'error': 'No data found'}), 404
+
+        if df is None:
+            return jsonify({'error': 'No data available for the specified period'}), 404
+
+        if df.empty:
+            return jsonify({'error': 'Empty data received from MOEX'}), 404
 
         # Подготовка результата
         result = {
@@ -72,7 +97,8 @@ def get_historical_data():
 
     except Exception as e:
         app.logger.error(f"Error: {str(e)}")
-        return jsonify({'error': str(e)}), 500
+        return jsonify({'error': 'Internal server error'}), 500
+
 
 @app.route('/api/download', methods=['POST'])
 def download_data():
@@ -91,7 +117,7 @@ def download_data():
             tmp_path,
             mimetype='application/json',
             as_attachment=True,
-            download_name=f"{data.get('ticker', 'data')}_historical.json"
+            download_name=f"moex_{data.get('ticker', 'data')}_{datetime.now().strftime('%Y%m%d')}.json"
         ))
 
         # Удаление файла после отправки
@@ -101,6 +127,15 @@ def download_data():
     except Exception as e:
         app.logger.error(f"Download error: {str(e)}")
         return jsonify({'error': str(e)}), 500
+
+
+def _build_cors_preflight_response():
+    response = make_response()
+    response.headers.add("Access-Control-Allow-Origin", "*")
+    response.headers.add("Access-Control-Allow-Headers", "*")
+    response.headers.add("Access-Control-Allow-Methods", "*")
+    return response
+
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
