@@ -1,188 +1,183 @@
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', () => {
+    // DOM элементы
     const showFormBtn = document.getElementById('showFormBtn');
     const dataForm = document.getElementById('dataForm');
-    const fetchDataBtn = document.getElementById('fetchDataBtn');
-    const downloadJsonBtn = document.getElementById('downloadJsonBtn');
     const tickerInput = document.getElementById('ticker');
     const startDateInput = document.getElementById('startDate');
     const endDateInput = document.getElementById('endDate');
     const timeframeSelect = document.getElementById('timeframe');
+    const fetchDataBtn = document.getElementById('fetchDataBtn');
+    const downloadJsonBtn = document.getElementById('downloadJsonBtn');
     const resultsDiv = document.getElementById('results');
     const errorDiv = document.getElementById('error');
     const dataTableContainer = document.getElementById('dataTableContainer');
 
-    // Устанавливаем текущую дату по умолчанию
-    const today = new Date().toISOString().split('T')[0];
-    endDateInput.value = today;
+    // Установка дат по умолчанию
+    endDateInput.value = new Date().toISOString().split('T')[0];
+    startDateInput.value = new Date(new Date().setFullYear(new Date().getFullYear() - 1))
+        .toISOString().split('T')[0];
 
-    // Показываем форму
-    showFormBtn.addEventListener('click', function() {
+    // Показ/скрытие формы
+    showFormBtn.addEventListener('click', () => {
         dataForm.classList.toggle('hidden');
-        if (!dataForm.classList.contains('hidden')) {
-            tickerInput.focus();
-        }
     });
 
-    // Получаем данные
-    fetchDataBtn.addEventListener('click', async function() {
-        const ticker = tickerInput.value.trim().toUpperCase();
-        const startDate = startDateInput.value;
-        const endDate = endDateInput.value;
-        const timeframe = timeframeSelect.value;
-
-        if (!ticker || !startDate || !endDate) {
-            showError('Пожалуйста, заполните все поля');
-            return;
-        }
-
-        if (new Date(startDate) > new Date(endDate)) {
-            showError('Начальная дата не может быть позже конечной даты');
-            return;
-        }
-
+    // Получение данных
+    fetchDataBtn.addEventListener('click', async () => {
         try {
-            const response = await fetch('/get-historical-data', {
+            const ticker = tickerInput.value.trim().toUpperCase();
+            const startDate = startDateInput.value;
+            const endDate = endDateInput.value;
+            const timeframe = timeframeSelect.value;
+
+            if (!ticker || !startDate || !endDate) {
+                showError('Пожалуйста, заполните все обязательные поля');
+                return;
+            }
+
+            const response = await fetch('/api/historical', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    ticker: ticker,
-                    startDate: startDate,
-                    endDate: endDate,
-                    timeframe: timeframe
+                    ticker,
+                    startDate,
+                    endDate,
+                    interval: timeframe
                 })
             });
 
             const data = await response.json();
 
-            if (data.error) {
-                showError(data.error);
+            if (!response.ok) {
+                showError(data.error || 'Ошибка при получении данных');
                 return;
             }
 
             displayData(data);
-        } catch (error) {
-            showError('Ошибка при получении данных: ' + error.message);
+        } catch (err) {
+            showError('Ошибка соединения: ' + err.message);
+            console.error('Fetch error:', err);
         }
     });
 
-    // Скачивание JSON
-    downloadJsonBtn.addEventListener('click', async function() {
-        if (!dataTableContainer.innerHTML) {
+    // Скачивание данных
+    downloadJsonBtn.addEventListener('click', async () => {
+        if (!dataTableContainer.dataset.rawData) {
             showError('Нет данных для скачивания');
             return;
         }
 
-        const ticker = tickerInput.value.trim().toUpperCase();
-        const startDate = startDateInput.value;
-        const endDate = endDateInput.value;
-        const timeframe = timeframeSelect.value;
-
         try {
-            const response = await fetch('/download-json', {
+            const response = await fetch('/api/download', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    ticker: ticker,
-                    startDate: startDate,
-                    endDate: endDate,
-                    timeframe: timeframe,
-                    data: JSON.parse(dataTableContainer.dataset.rawData || '[]')
-                })
+                body: dataTableContainer.dataset.rawData
             });
 
+            if (!response.ok) {
+                throw new Error('Ошибка при скачивании');
+            }
+
             const blob = await response.blob();
-            const url = window.URL.createObjectURL(blob);
+            const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `${ticker}_${startDate}_to_${endDate}.json`;
+            a.download = `stock_data_${new Date().toISOString()}.json`;
             document.body.appendChild(a);
             a.click();
-            a.remove();
-        } catch (error) {
-            showError('Ошибка при скачивании: ' + error.message);
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        } catch (err) {
+            showError('Ошибка при скачивании: ' + err.message);
+            console.error('Download error:', err);
         }
     });
 
+    // Отображение данных
     function displayData(data) {
     errorDiv.classList.add('hidden');
+    dataTableContainer.dataset.rawData = JSON.stringify(data);
 
-    // Сохраняем сырые данные для скачивания
-    dataTableContainer.dataset.rawData = JSON.stringify(data.data);
+    const tableHTML = `
+        <h3>${data.ticker} (${data.startDate} - ${data.endDate})</h3>
+        <div class="table-responsive">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Дата</th>
+                        <th>Открытие</th>
+                        <th>Максимум</th>
+                        <th>Минимум</th>
+                        <th>Закрытие</th>
+                        <th>Объем</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${data.data.map(item => {
+                        // Преобразуем ключи из формата ('Close', 'AAPL') в простые значения
+                        const transformedItem = {
+                            Date: item["('Date', '')"],
+                            Open: item["('Open', 'AAPL')"],
+                            High: item["('High', 'AAPL')"],
+                            Low: item["('Low', 'AAPL')"],
+                            Close: item["('Close', 'AAPL')"],
+                            Volume: item["('Volume', 'AAPL')"]
+                        };
 
-    let tableHTML = `
-        <h3>${data.ticker} с ${data.startDate} по ${data.endDate} (${getTimeframeLabel(data.timeframe)})</h3>
-        <table>
-            <thead>
-                <tr>
-                    <th>Дата</th>
-                    <th>Открытие</th>
-                    <th>Максимум</th>
-                    <th>Минимум</th>
-                    <th>Закрытие</th>
-                    <th>Объем</th>
-                </tr>
-            </thead>
-            <tbody>
-    `;
-
-    data.data.forEach(item => {
-        // Добавляем проверки на undefined/null и форматирование
-        const formatValue = (value) => {
-            if (value === null || value === undefined) return 'N/A';
-            if (typeof value === 'number') {
-                // Форматируем числа (цену и объем по-разному)
-                if (item.hasOwnProperty('Volume') || item.hasOwnProperty('volume')) {
-                    return value.toLocaleString();
-                }
-                return value.toFixed(2);
-            }
-            return value;
-        };
-
-        tableHTML += `
-            <tr>
-                <td>${item.Date || item.date || 'N/A'}</td>
-                <td>${formatValue(item.Open || item.open)}</td>
-                <td>${formatValue(item.High || item.high)}</td>
-                <td>${formatValue(item.Low || item.low)}</td>
-                <td>${formatValue(item.Close || item.close)}</td>
-                <td>${formatValue(item.Volume || item.volume)}</td>
-            </tr>
-        `;
-    });
-
-    tableHTML += `
-            </tbody>
-        </table>
+                        return `
+                            <tr>
+                                <td>${formatDate(transformedItem.Date)}</td>
+                                <td>${formatNumber(transformedItem.Open)}</td>
+                                <td>${formatNumber(transformedItem.High)}</td>
+                                <td>${formatNumber(transformedItem.Low)}</td>
+                                <td>${formatNumber(transformedItem.Close)}</td>
+                                <td>${formatVolume(transformedItem.Volume)}</td>
+                            </tr>
+                        `;
+                    }).join('')}
+                </tbody>
+            </table>
+        </div>
     `;
 
     dataTableContainer.innerHTML = tableHTML;
     resultsDiv.classList.remove('hidden');
 }
-    
+
+// Добавляем новую функцию для форматирования даты
+function formatDate(dateString) {
+    if (!dateString) return 'N/A';
+    try {
+        const date = new Date(dateString);
+        return date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
+    } catch {
+        return dateString; // Возвращаем как есть, если не удалось распарсить
+    }
+}
+
+// Обновляем formatNumber и formatVolume
+function formatNumber(value) {
+    if (value === null || value === undefined) return 'N/A';
+    return Number(value).toFixed(2);
+}
+
+function formatVolume(value) {
+    if (value === null || value === undefined) return 'N/A';
+    return parseInt(value).toLocaleString();
+}
+
+    // Вспомогательные функции
+    function formatNumber(value) {
+        return value?.toFixed?.(2) ?? 'N/A';
+    }
+
+    function formatVolume(value) {
+        return value?.toLocaleString?.() ?? 'N/A';
+    }
+
     function showError(message) {
         errorDiv.textContent = message;
         errorDiv.classList.remove('hidden');
         resultsDiv.classList.add('hidden');
-    }
-    
-    function getTimeframeLabel(timeframe) {
-        const timeframes = {
-            '1m': '1 минута',
-            '2m': '2 минуты',
-            '5m': '5 минут',
-            '15m': '15 минут',
-            '30m': '30 минут',
-            '60m': '60 минут',
-            '90m': '90 минут',
-            '1h': '1 час',
-            '1d': '1 день',
-            '5d': '5 дней',
-            '1wk': '1 неделя',
-            '1mo': '1 месяц',
-            '3mo': '3 месяца'
-        };
-        
-        return timeframes[timeframe] || timeframe;
     }
 });

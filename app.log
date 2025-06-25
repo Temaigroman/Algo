@@ -1,0 +1,3 @@
+2025-06-25 22:40:13,786 INFO: Request data: {'ticker': 'AAPL', 'startDate': '2024-06-01', 'endDate': '2025-06-25', 'interval': '1d'} [in D:\!IT\Algo\app.py:46]
+2025-06-25 22:44:14,381 INFO: Request data: {'ticker': 'AAPL', 'startDate': '2024-06-01', 'endDate': '2025-06-09', 'interval': '1d'} [in D:\!IT\Algo\app.py:46]
+2025-06-25 22:45:11,183 INFO: Request data: {'ticker': 'AAPL', 'startDate': '2025-06-01', 'endDate': '2025-06-09', 'interval': '1d'} [in D:\!IT\Algo\app.py:46]

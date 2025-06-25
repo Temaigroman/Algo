@@ -1,85 +1,106 @@
-import sys
 import os
-from flask import Flask, render_template, request, jsonify, send_file
-from datetime import datetime
+import sys
 import json
+import tempfile
+from datetime import datetime
+from flask import Flask, request, jsonify, send_file, make_response, render_template
+from flask_cors import CORS
 import logging
-import traceback
+from logging.handlers import RotatingFileHandler
 
-# Настраиваем пути к шаблонам и статическим файлам
+# Настройка путей
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+sys.path.append(os.path.join(BASE_DIR, 'back', 'Data'))
+
+# Инициализация приложения
 app = Flask(__name__,
-            template_folder=os.path.join(os.path.dirname(__file__), 'front', 'templates'),
-            static_folder=os.path.join(os.path.dirname(__file__), 'front', 'static'))
-
-# Добавляем путь к папке back/Data в Python path
-sys.path.append(os.path.join(os.path.dirname(__file__), 'back', 'Data'))
-
-# Импортируем после настройки пути
-from Data import YahooFinanceHistory
+            template_folder=os.path.join(BASE_DIR, 'front', 'templates'),
+            static_folder=os.path.join(BASE_DIR, 'front', 'static'))
+CORS(app)
 
 # Настройка логирования
-logging.basicConfig(level=logging.DEBUG)
-logger = logging.getLogger(__name__)
+log_handler = RotatingFileHandler('app.log', maxBytes=100000, backupCount=3)
+log_handler.setFormatter(logging.Formatter(
+    '%(asctime)s %(levelname)s: %(message)s [in %(pathname)s:%(lineno)d]'
+))
+app.logger.addHandler(log_handler)
+app.logger.setLevel(logging.INFO)
 
+# Проверка существования папок
+print("Template folder exists:", os.path.exists(app.template_folder))
+print("Static folder exists:", os.path.exists(app.static_folder))
+
+# Импорт после настройки путей
+from Data import YahooFinanceHistory
+service = YahooFinanceHistory()
 
 @app.route('/')
 def index():
+    """Главная страница приложения"""
     return render_template('index.html')
 
-
-@app.route('/get-historical-data', methods=['POST'])
+@app.route('/api/historical', methods=['POST'])
 def get_historical_data():
     try:
-        logger.debug("Received request data: %s", request.json)
+        data = request.get_json()
+        app.logger.info(f"Request data: {data}")
 
-        data = request.json
-        if not data:
-            return jsonify({"error": "No data provided"}), 400
-
+        # Валидация параметров
         ticker = data.get('ticker', '').upper()
         start_date = data.get('startDate')
-        end_date = data.get('endDate')
-        timeframe = data.get('timeframe', '1d')
+        end_date = data.get('endDate', datetime.now().strftime('%Y-%m-%d'))
+        interval = data.get('interval', '1d')
 
         if not ticker or not start_date:
-            return jsonify({"error": "Ticker and start date are required"}), 400
+            return jsonify({'error': 'Missing required parameters'}), 400
 
-        logger.debug(f"Fetching data for {ticker} from {start_date} to {end_date} with {timeframe} interval")
-
-        service = YahooFinanceHistory()
-        df = service.get_historical_data(ticker, start_date, end_date, timeframe)
-
+        # Получение данных
+        df = service.get_historical_data(ticker, start_date, end_date, interval)
         if df is None or df.empty:
-            error_msg = f"No data found for {ticker} with given parameters"
-            logger.error(error_msg)
-            return jsonify({"error": error_msg}), 404
+            return jsonify({'error': 'No data found'}), 404
 
-        logger.debug("Successfully fetched %d rows of data", len(df))
-
+        # Подготовка результата
         result = {
-            "ticker": ticker,
-            "startDate": start_date,
-            "endDate": end_date if end_date else datetime.now().strftime('%Y-%m-%d'),
-            "timeframe": timeframe,
-            "data": json.loads(df.reset_index().to_json(orient='records', date_format='iso'))
+            'ticker': ticker,
+            'startDate': start_date,
+            'endDate': end_date,
+            'interval': interval,
+            'data': json.loads(df.reset_index().to_json(orient='records', date_format='iso'))
         }
 
         return jsonify(result)
 
     except Exception as e:
-        logger.error("Error processing request: %s", str(e))
-        logger.error(traceback.format_exc())
-        return jsonify({
-            "error": "Internal server error",
-            "details": str(e)
-        }), 500
+        app.logger.error(f"Error: {str(e)}")
+        return jsonify({'error': str(e)}), 500
 
+@app.route('/api/download', methods=['POST'])
+def download_data():
+    try:
+        data = request.get_json()
+        if not data or 'data' not in data:
+            return jsonify({'error': 'No data provided'}), 400
+
+        # Создание временного файла
+        with tempfile.NamedTemporaryFile(mode='w+', suffix='.json', delete=False) as tmp:
+            json.dump(data, tmp, indent=4)
+            tmp_path = tmp.name
+
+        # Подготовка ответа
+        response = make_response(send_file(
+            tmp_path,
+            mimetype='application/json',
+            as_attachment=True,
+            download_name=f"{data.get('ticker', 'data')}_historical.json"
+        ))
+
+        # Удаление файла после отправки
+        response.call_on_close(lambda: os.unlink(tmp_path))
+        return response
+
+    except Exception as e:
+        app.logger.error(f"Download error: {str(e)}")
+        return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
-    # Проверка путей
-    print("Путь к шаблонам:", app.template_folder)
-    print("Файлы в templates:", os.listdir(app.template_folder))
-    print("Путь к static:", app.static_folder)
-    print("Файлы в static:", os.listdir(app.static_folder))
-
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    app.run(host='0.0.0.0', port=5000, debug=True)
