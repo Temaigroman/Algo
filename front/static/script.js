@@ -1,4 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
+    // Получаем элементы
     const elements = {
         showFormBtn: document.getElementById('showFormBtn'),
         dataForm: document.getElementById('dataForm'),
@@ -20,10 +21,16 @@ document.addEventListener('DOMContentLoaded', () => {
     elements.startDateInput.value = new Date(today.setFullYear(today.getFullYear() - 1))
         .toISOString().split('T')[0];
 
-    elements.showFormBtn.addEventListener('click', () => {
+    // Обработчик для кнопки "Показать форму"
+    elements.showFormBtn.addEventListener('click', (e) => {
+        e.preventDefault();
         elements.dataForm.classList.toggle('hidden');
+        elements.showFormBtn.textContent = elements.dataForm.classList.contains('hidden')
+            ? 'Показать форму'
+            : 'Скрыть форму';
     });
 
+    // Обработчик для кнопки "Получить данные"
     elements.fetchDataBtn.addEventListener('click', async () => {
         try {
             elements.errorDiv.classList.add('hidden');
@@ -40,6 +47,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 throw new Error('Пожалуйста, заполните все поля');
             }
 
+            // Добавляем .ME для российских акций, если не указано
+            const fullTicker = ticker.endsWith('.ME') || !['SBER', 'GAZP', 'VTBR', 'MOEX', 'GMKN'].includes(ticker)
+                ? ticker
+                : `${ticker}.ME`;
+
             const response = await fetch('http://127.0.0.1:5000/api/historical', {
                 method: 'POST',
                 headers: {
@@ -48,7 +60,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 mode: 'cors',
                 credentials: 'include',
                 body: JSON.stringify({
-                    ticker: ticker,
+                    ticker: fullTicker,
                     startDate: startDate,
                     endDate: endDate,
                     interval: timeframe
@@ -63,7 +75,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
 
             const data = await response.json();
-            console.log('Полученные данные:', data); // Логируем данные для отладки
+            console.log('Полученные данные:', data); // Для отладки
 
             if (!data?.data?.length) {
                 throw new Error('Данные не найдены. Проверьте параметры запроса.');
@@ -107,13 +119,25 @@ document.addEventListener('DOMContentLoaded', () => {
             `;
 
             data.data.forEach(item => {
-                // Проверяем разные варианты названий полей
-                const dateValue = item.date || item.Datetime || item.datetime || item.Date;
-                const open = item.open || item.Open;
-                const high = item.high || item.High;
-                const low = item.low || item.Low;
-                const close = item.close || item.Close;
-                const volume = item.volume || item.Volume;
+                // Динамически определяем ключи полей
+                const keys = Object.keys(item);
+                const dateKey = keys.find(k => k.toLowerCase().includes('datetime') ||
+                                      k.toLowerCase().includes('date')) || keys[0];
+
+                const getValue = (field) => {
+                    const fieldKey = keys.find(k =>
+                        k.toLowerCase().includes(field.toLowerCase()) &&
+                        (k.includes(data.ticker) || !k.includes(')'))
+                    );
+                    return fieldKey ? item[fieldKey] : null;
+                };
+
+                const dateValue = item[dateKey];
+                const open = getValue('open');
+                const high = getValue('high');
+                const low = getValue('low');
+                const close = getValue('close');
+                const volume = getValue('volume');
 
                 tableHtml += `
                     <tr>
@@ -177,18 +201,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function formatDateTime(dateStr) {
         if (!dateStr) return 'нет данных';
-
         try {
-            const date = new Date(dateStr);
-            if (isNaN(date.getTime())) {
-                // Пробуем разобрать дату в формате 'YYYY-MM-DD'
-                const parts = String(dateStr).split('T')[0].split('-');
-                if (parts.length === 3) {
-                    return new Date(parts[0], parts[1]-1, parts[2]).toLocaleDateString('ru-RU');
-                }
-                return dateStr;
-            }
-            return date.toLocaleString('ru-RU');
+            const cleanDateStr = String(dateStr).replace(/[()']/g, '');
+            const date = new Date(cleanDateStr);
+            return date.toLocaleDateString('ru-RU');
         } catch {
             return dateStr;
         }
