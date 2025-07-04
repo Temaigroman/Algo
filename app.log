@@ -22,3 +22,127 @@
 2025-06-25 23:44:20,127 INFO: Request data: {'ticker': 'VTBR', 'startDate': '2025-06-02', 'endDate': '2025-06-25', 'interval': '1d'} [in D:\!IT\Algo\app.py:67]
 2025-06-25 23:47:19,176 INFO: Request data: {'ticker': 'SBER', 'startDate': '2025-06-16', 'endDate': '2025-06-25', 'interval': '1d'} [in D:\!IT\Algo\app.py:67]
 2025-06-25 23:49:32,457 INFO: Request data: {'ticker': 'SBER', 'startDate': '2024-06-25', 'endDate': '2025-06-25', 'interval': '1d'} [in D:\!IT\Algo\app.py:67]
+2025-06-26 20:07:19,334 INFO: Request data: {'ticker': 'SBER', 'startDate': '2025-06-01', 'endDate': '2025-06-26', 'interval': '1d'} [in D:\!IT\Algo\app.py:67]
+2025-07-03 16:31:49,155 INFO: Request data: {'ticker': 'SBER', 'startDate': '2024-07-01', 'endDate': '2025-07-03', 'interval': '60m'} [in D:\!IT\Algo\app.py:67]
+2025-07-03 17:04:01,270 INFO: MoexAlgoHistory service initialized successfully [in D:\!IT\Algo\app.py:46]
+2025-07-03 17:04:03,608 INFO: MoexAlgoHistory service initialized successfully [in D:\!IT\Algo\app.py:46]
+2025-07-03 17:08:23,780 INFO: MoexAlgoHistory service initialized successfully [in D:\!IT\Algo\app.py:46]
+2025-07-03 17:08:26,398 INFO: MoexAlgoHistory service initialized successfully [in D:\!IT\Algo\app.py:46]
+2025-07-03 17:11:21,712 INFO: MoexAlgoHistory service initialized successfully [in D:\!IT\Algo\app.py:46]
+2025-07-03 17:11:32,034 INFO: MoexAlgoHistory service initialized successfully [in D:\!IT\Algo\app.py:46]
+2025-07-03 17:11:34,438 INFO: MoexAlgoHistory service initialized successfully [in D:\!IT\Algo\app.py:46]
+2025-07-03 17:19:54,819 INFO: MoexAlgoHistory service initialized successfully [in D:\!IT\Algo\app.py:46]
+2025-07-03 17:19:57,244 INFO: MoexAlgoHistory service initialized successfully [in D:\!IT\Algo\app.py:46]
+2025-07-03 17:20:23,643 INFO: Historical data request: {'ticker': 'SBER', 'startDate': '2024-06-01', 'endDate': '2025-07-03', 'interval': '1d'} [in D:\!IT\Algo\app.py:114]
+2025-07-03 17:33:26,908 CRITICAL: Service initialization error: '(' was never closed (Data.py, line 55) [in D:\!IT\Algo\app.py:51]
+2025-07-03 18:07:47,982 INFO: MoexAlgoHistory service initialized successfully [in D:\!IT\Algo\app.py:46]
+2025-07-03 18:07:50,297 INFO: MoexAlgoHistory service initialized successfully [in D:\!IT\Algo\app.py:46]
+2025-07-03 18:08:08,326 INFO: Historical data request: {'ticker': 'SBER', 'startDate': '2024-07-01', 'endDate': '2025-07-03', 'interval': '1d'} [in D:\!IT\Algo\app.py:114]
+2025-07-03 18:08:28,321 INFO: Historical data request: {'ticker': 'GAZP', 'startDate': '2024-07-01', 'endDate': '2025-07-03', 'interval': '1d'} [in D:\!IT\Algo\app.py:114]
+2025-07-03 18:18:33,062 INFO: MoexAlgoHistory service initialized successfully [in D:\!IT\Algo\app.py:46]
+2025-07-03 18:18:55,725 INFO: MoexAlgoHistory service initialized successfully [in D:\!IT\Algo\app.py:46]
+2025-07-03 18:18:58,346 INFO: MoexAlgoHistory service initialized successfully [in D:\!IT\Algo\app.py:46]
+2025-07-03 18:19:11,717 INFO: Historical data request: {'ticker': 'SBER', 'startDate': '2024-07-01', 'endDate': '2025-07-03', 'interval': '1d'} [in D:\!IT\Algo\app.py:114]
+2025-07-03 18:21:31,645 INFO: MoexAlgoHistory service initialized successfully [in D:\!IT\Algo\app.py:46]
+2025-07-03 18:22:00,275 INFO: Historical data request: {'ticker': 'GAZP', 'startDate': '2024-07-01', 'endDate': '2025-07-03', 'interval': '1d'} [in D:\!IT\Algo\app.py:114]
+2025-07-03 18:25:36,137 INFO: MoexAlgoHistory service initialized successfully [in D:\!IT\Algo\app.py:46]
+2025-07-03 18:25:55,907 INFO: MoexAlgoHistory service initialized successfully [in D:\!IT\Algo\app.py:46]
+2025-07-03 18:25:59,446 INFO: MoexAlgoHistory service initialized successfully [in D:\!IT\Algo\app.py:46]
+2025-07-03 18:26:14,142 INFO: Historical data request: {'ticker': 'GAZP', 'startDate': '2025-01-01', 'endDate': '2025-07-03', 'interval': '1d'} [in D:\!IT\Algo\app.py:114]
+2025-07-03 18:36:15,963 CRITICAL: Service initialization error: Неправильный параметр `period` [in D:\!IT\Algo\app.py:51]
+2025-07-03 18:36:52,932 CRITICAL: Service initialization error: Неправильный параметр `period` [in D:\!IT\Algo\app.py:51]
+2025-07-03 18:39:18,426 INFO: MoexAlgoHistory service initialized successfully [in D:\!IT\Algo\app.py:46]
+2025-07-03 18:39:20,728 INFO: MoexAlgoHistory service initialized successfully [in D:\!IT\Algo\app.py:46]
+2025-07-03 18:41:31,022 INFO: Historical data request: {'ticker': 'SBER', 'startDate': '2024-07-03', 'endDate': '2025-07-03', 'interval': '1d'} [in D:\!IT\Algo\app.py:114]
+2025-07-03 18:41:31,023 ERROR: Historical data error: 'MoexAlgoHistory' object has no attribute 'is_valid_ticker' [in D:\!IT\Algo\app.py:144]
+Traceback (most recent call last):
+  File "D:\!IT\Algo\app.py", line 117, in get_historical_data
+    params, error = _validate_historical_request(request_data)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\!IT\Algo\app.py", line 73, in _validate_historical_request
+    if not service.is_valid_ticker(ticker):
+           ^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'MoexAlgoHistory' object has no attribute 'is_valid_ticker'
+2025-07-03 18:42:54,770 INFO: Historical data request: {'ticker': 'GAZP', 'startDate': '2024-07-03', 'endDate': '2025-07-03', 'interval': '1d'} [in D:\!IT\Algo\app.py:114]
+2025-07-03 18:42:54,770 ERROR: Historical data error: 'MoexAlgoHistory' object has no attribute 'is_valid_ticker' [in D:\!IT\Algo\app.py:144]
+Traceback (most recent call last):
+  File "D:\!IT\Algo\app.py", line 117, in get_historical_data
+    params, error = _validate_historical_request(request_data)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\!IT\Algo\app.py", line 73, in _validate_historical_request
+    if not service.is_valid_ticker(ticker):
+           ^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'MoexAlgoHistory' object has no attribute 'is_valid_ticker'
+2025-07-03 18:42:58,880 INFO: Historical data request: {'ticker': 'ЦУФФ', 'startDate': '2024-07-03', 'endDate': '2025-07-03', 'interval': '1d'} [in D:\!IT\Algo\app.py:114]
+2025-07-03 18:42:58,880 ERROR: Historical data error: 'MoexAlgoHistory' object has no attribute 'is_valid_ticker' [in D:\!IT\Algo\app.py:144]
+Traceback (most recent call last):
+  File "D:\!IT\Algo\app.py", line 117, in get_historical_data
+    params, error = _validate_historical_request(request_data)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\!IT\Algo\app.py", line 73, in _validate_historical_request
+    if not service.is_valid_ticker(ticker):
+           ^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'MoexAlgoHistory' object has no attribute 'is_valid_ticker'
+2025-07-03 18:43:00,035 INFO: Historical data request: {'ticker': 'ЦУФФ', 'startDate': '2024-07-03', 'endDate': '2025-07-03', 'interval': '1d'} [in D:\!IT\Algo\app.py:114]
+2025-07-03 18:43:00,035 ERROR: Historical data error: 'MoexAlgoHistory' object has no attribute 'is_valid_ticker' [in D:\!IT\Algo\app.py:144]
+Traceback (most recent call last):
+  File "D:\!IT\Algo\app.py", line 117, in get_historical_data
+    params, error = _validate_historical_request(request_data)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\!IT\Algo\app.py", line 73, in _validate_historical_request
+    if not service.is_valid_ticker(ticker):
+           ^^^^^^^^^^^^^^^^^^^^^^^
+AttributeError: 'MoexAlgoHistory' object has no attribute 'is_valid_ticker'
+2025-07-03 18:43:17,115 INFO: MoexAlgoHistory service initialized successfully [in D:\!IT\Algo\app.py:46]
+2025-07-03 18:46:22,892 INFO: MoexAlgoHistory service initialized successfully [in D:\!IT\Algo\app.py:45]
+2025-07-03 18:47:21,404 INFO: Historical data request: {'ticker': 'SBER', 'startDate': '2024-07-03', 'endDate': '2025-07-03', 'interval': '1d'} [in D:\!IT\Algo\app.py:108]
+2025-07-03 18:47:43,549 INFO: MoexAlgoHistory service initialized successfully [in D:\!IT\Algo\app.py:45]
+2025-07-03 18:47:46,124 INFO: MoexAlgoHistory service initialized successfully [in D:\!IT\Algo\app.py:45]
+2025-07-03 18:47:52,273 INFO: Historical data request: {'ticker': 'ФЦВФЦВ', 'startDate': '2024-07-03', 'endDate': '2025-07-03', 'interval': '1d'} [in D:\!IT\Algo\app.py:108]
+2025-07-03 18:48:01,650 INFO: Historical data request: {'ticker': 'SBER', 'startDate': '2024-07-01', 'endDate': '2025-07-03', 'interval': '1d'} [in D:\!IT\Algo\app.py:108]
+2025-07-03 18:51:04,347 INFO: MoexAlgoHistory service initialized successfully [in D:\!IT\Algo\app.py:45]
+2025-07-03 18:52:01,349 INFO: MoexAlgoHistory service initialized successfully [in D:\!IT\Algo\app.py:45]
+2025-07-03 18:54:06,079 INFO: MoexAlgoHistory service initialized successfully [in D:\!IT\Algo\app.py:45]
+2025-07-03 18:54:08,543 INFO: MoexAlgoHistory service initialized successfully [in D:\!IT\Algo\app.py:45]
+2025-07-03 18:54:21,527 INFO: Historical data request: {'ticker': 'SBER', 'startDate': '2024-07-01', 'endDate': '2025-07-03', 'interval': '1d'} [in D:\!IT\Algo\app.py:108]
+2025-07-03 18:55:51,084 CRITICAL: Service initialization error: name 'Union' is not defined [in D:\!IT\Algo\app.py:50]
+2025-07-03 18:57:40,983 CRITICAL: Service initialization error: name 'Union' is not defined [in D:\!IT\Algo\app.py:50]
+2025-07-03 19:03:25,881 INFO: MoexAlgoHistory service initialized successfully [in D:\!IT\Algo\app.py:45]
+2025-07-03 19:03:27,734 INFO: MoexAlgoHistory service initialized successfully [in D:\!IT\Algo\app.py:45]
+2025-07-03 19:03:40,320 INFO: Request for SBER from 2024-07-01 to 2025-07-03 [in D:\!IT\Algo\app.py:117]
+2025-07-03 19:09:00,945 INFO: MoexAlgoHistory service initialized successfully [in D:\!IT\Algo\app.py:45]
+2025-07-04 16:15:48,249 INFO: MoexAlgoHistory service initialized successfully [in D:\!IT\Algo\app.py:45]
+2025-07-04 16:15:50,260 INFO: MoexAlgoHistory service initialized successfully [in D:\!IT\Algo\app.py:45]
+2025-07-04 16:20:43,126 CRITICAL: Failed to import MoexAlgoHistory: cannot import name 'MoexAlgoHistory' from 'Data.Data' (D:\!IT\Algo\back\Data\Data.py) [in D:\!IT\Algo\app.py:47]
+2025-07-04 16:20:52,518 CRITICAL: Failed to import MoexAlgoHistory: cannot import name 'MoexAlgoHistory' from 'Data.Data' (D:\!IT\Algo\back\Data\Data.py) [in D:\!IT\Algo\app.py:47]
+2025-07-04 16:26:02,814 INFO: YahooFinanceHistory service initialized successfully [in D:\!IT\Algo\app.py:45]
+2025-07-04 16:26:03,556 INFO: YahooFinanceHistory service initialized successfully [in D:\!IT\Algo\app.py:45]
+2025-07-04 16:33:46,052 INFO: YahooFinanceHistory service initialized successfully [in D:\!IT\Algo\app.py:45]
+2025-07-04 16:33:46,764 INFO: YahooFinanceHistory service initialized successfully [in D:\!IT\Algo\app.py:45]
+2025-07-04 16:38:44,956 INFO: YahooFinanceHistory service initialized successfully [in D:\!IT\Algo\app.py:45]
+2025-07-04 16:38:45,714 INFO: YahooFinanceHistory service initialized successfully [in D:\!IT\Algo\app.py:45]
+2025-07-04 16:45:59,544 INFO: YahooFinanceHistory service initialized successfully [in D:\!IT\Algo\app.py:45]
+2025-07-04 16:46:00,344 INFO: YahooFinanceHistory service initialized successfully [in D:\!IT\Algo\app.py:45]
+2025-07-04 16:47:06,341 INFO: YahooFinanceHistory service initialized successfully [in D:\!IT\Algo\app.py:45]
+2025-07-04 16:47:07,043 INFO: YahooFinanceHistory service initialized successfully [in D:\!IT\Algo\app.py:45]
+2025-07-04 16:49:57,876 INFO: YahooFinanceHistory service initialized successfully [in D:\!IT\Algo\app.py:53]
+2025-07-04 16:50:53,975 INFO: YahooFinanceHistory service initialized successfully [in D:\!IT\Algo\app.py:53]
+2025-07-04 16:50:54,666 INFO: YahooFinanceHistory service initialized successfully [in D:\!IT\Algo\app.py:53]
+2025-07-04 16:58:04,593 INFO: YahooFinanceHistory service initialized successfully [in D:\!IT\Algo\app.py:54]
+2025-07-04 16:58:52,126 INFO: YahooFinanceHistory service initialized successfully [in D:\!IT\Algo\app.py:54]
+2025-07-04 16:58:52,856 INFO: YahooFinanceHistory service initialized successfully [in D:\!IT\Algo\app.py:54]
+2025-07-04 17:00:38,155 INFO: Request for SBER.ME from 2024-07-04 to 2025-07-04, interval 1d [in D:\!IT\Algo\app.py:117]
+2025-07-04 17:01:01,087 INFO: Request for SBER.ME from 2024-07-04 to 2025-07-04, interval 1d [in D:\!IT\Algo\app.py:117]
+2025-07-04 17:01:12,209 INFO: Request for SBER.ME from 2021-01-04 to 2025-07-04, interval 1d [in D:\!IT\Algo\app.py:117]
+2025-07-04 17:03:04,868 INFO: Request for AAPL.ME from 2021-01-04 to 2025-07-04, interval 1d [in D:\!IT\Algo\app.py:117]
+2025-07-04 17:03:10,487 INFO: Request for AAPL.ME from 2021-01-04 to 2025-07-04, interval 1d [in D:\!IT\Algo\app.py:117]
+2025-07-04 17:03:16,545 INFO: Request for AAPL.ME from 2021-01-04 to 2025-07-04, interval 1h [in D:\!IT\Algo\app.py:117]
+2025-07-04 17:03:24,033 INFO: Request for SBER.ME from 2021-01-04 to 2025-07-04, interval 1d [in D:\!IT\Algo\app.py:117]
+2025-07-04 17:04:38,104 INFO: Request for TSLA.ME from 2021-01-01 to 2025-07-04, interval 1d [in D:\!IT\Algo\app.py:117]
+2025-07-04 17:07:45,146 INFO: Request for TSLA from 2024-07-04 to 2025-07-04, interval 1d [in D:\!IT\Algo\app.py:117]
+2025-07-04 17:07:51,966 INFO: Request for AAPL from 2024-07-04 to 2025-07-04, interval 1d [in D:\!IT\Algo\app.py:117]
+2025-07-04 17:07:58,895 INFO: Request for SBER.ME from 2024-07-04 to 2025-07-04, interval 1d [in D:\!IT\Algo\app.py:117]
+2025-07-04 17:08:04,084 INFO: Request for SBER.ME from 2024-07-04 to 2025-07-04, interval 1d [in D:\!IT\Algo\app.py:117]
+2025-07-04 17:08:17,411 INFO: Request for SBER.ME from 2020-01-01 to 2025-07-04, interval 1d [in D:\!IT\Algo\app.py:117]
+2025-07-04 17:13:59,856 INFO: Request for SBER.ME from 2020-01-01 to 2025-07-04, interval 1d [in D:\!IT\Algo\app.py:117]
+2025-07-04 17:14:09,463 INFO: Request for AAPL from 2020-01-01 to 2025-07-04, interval 1d [in D:\!IT\Algo\app.py:117]
