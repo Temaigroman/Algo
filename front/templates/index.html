@@ -34,13 +34,25 @@
         .hidden {
             display: none !important;
         }
+        .button-group {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-bottom: 20px;
+            max-width: 200px;
+        }
     </style>
 </head>
 <body>
     <div class="container mt-4">
-        <h1 class="mb-4">Исторические данные фондового рынка</h1>
+        <h1 class="mb-4">Работа с историческими данными</h1>
 
-        <button id="showFormBtn" class="btn btn-primary mb-4">Показать форму</button>
+        <div class="button-group">
+            <button id="showFormBtn" class="btn btn-primary">Показать форму</button>
+            <a href="/backtest" class="btn btn-success" id="backtestBtn">
+                Бэктест стратегии
+            </a>
+        </div>
 
         <div id="dataForm" class="card mb-4 hidden">
             <div class="card-body">

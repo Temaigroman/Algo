@@ -91,6 +91,10 @@ def _validate_historical_request(data: Dict[str, Any]) -> Optional[tuple]:
 def index():
     """Главная страница приложения"""
     return render_template('index.html')
+@app.route('/backtest')
+def backtest_page():
+    """Страница бэктестинга"""
+    return render_template('backtest.html')
 
 @app.route('/api/historical', methods=['POST', 'OPTIONS'])
 def get_historical_data():
@@ -175,3 +179,48 @@ if __name__ == '__main__':
         port=int(os.getenv('FLASK_PORT', 5000)),
         debug=os.getenv('FLASK_DEBUG', 'true').lower() == 'true'
     )
+
+
+# --- Новые маршруты для бэктеста ---
+@app.route('/api/backtest', methods=['POST', 'OPTIONS'])
+def run_backtest():
+    """Запуск бэктеста торговой стратегии"""
+    if request.method == 'OPTIONS':
+        return _build_cors_preflight_response()
+
+    try:
+        # Получаем параметры из запроса
+        request_data = request.get_json()
+        if not request_data:
+            return jsonify({'error': 'Invalid request data'}), 400
+
+        # Создаем временный файл с данными для бэктеста
+        with tempfile.NamedTemporaryFile(mode='w+', suffix='.json', delete=False) as tmp:
+            json.dump(request_data['data'], tmp)
+            tmp_path = tmp.name
+
+        # Запускаем бэктест как отдельный процесс
+        backtest_script = str(BASE_DIR / 'back' / 'Data' / 'Backtesting.py')
+        result = subprocess.run(
+            ['python', backtest_script, tmp_path],
+            capture_output=True,
+            text=True
+        )
+
+        # Удаляем временный файл
+        os.unlink(tmp_path)
+
+        if result.returncode != 0:
+            app.logger.error(f"Backtest error: {result.stderr}")
+            return jsonify({'error': result.stderr}), 500
+
+        # Парсим результат
+        try:
+            backtest_result = json.loads(result.stdout)
+            return jsonify(backtest_result)
+        except json.JSONDecodeError:
+            return jsonify({'error': 'Invalid backtest output', 'output': result.stdout}), 500
+
+    except Exception as e:
+        app.logger.error(f"Backtest API error: {str(e)}", exc_info=True)
+        return jsonify({'error': str(e)}), 500
