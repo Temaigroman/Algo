@@ -7,52 +7,40 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
     <style>
-        .loading-overlay {
+        .data-upload-area {
+            border: 2px dashed #ccc;
+            padding: 20px;
+            text-align: center;
+            margin-bottom: 20px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        .data-upload-area:hover {
+            background-color: #f8f9fa;
+        }
+        .data-upload-area.dragover {
+            background-color: #e9ecef;
+            border-color: #0d6efd;
+        }
+        #loadingIndicator {
+            display: none;
+            justify-content: center;
+            align-items: center;
             position: fixed;
             top: 0;
             left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.5);
-            display: flex;
-            justify-content: center;
-            align-items: center;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0,0,0,0.5);
             z-index: 1000;
+        }
+        .chart-container {
+            position: relative;
+            height: 400px;
+            margin-bottom: 20px;
+        }
+        .hidden {
             display: none;
-        }
-        .spinner {
-            width: 50px;
-            height: 50px;
-            border: 5px solid #f3f3f3;
-            border-top: 5px solid #3498db;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-        }
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        .indicator-card {
-            cursor: pointer;
-            transition: all 0.3s;
-        }
-        .indicator-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
-        }
-        .indicator-card.selected {
-            border: 2px solid #0d6efd;
-            background-color: #f8f9fa;
-        }
-        .profit {
-            color: green;
-        }
-        .loss {
-            color: red;
-        }
-        canvas {
-            width: 100% !important;
-            height: auto !important;
         }
     </style>
 </head>
@@ -60,128 +48,125 @@
     <div class="container py-4">
         <h1 class="mb-4">Бэктест торговой стратегии</h1>
 
-        <div class="row">
-            <div class="col-md-8">
-                <div class="card mb-4">
-                    <div class="card-body">
-                        <h5 class="card-title">Параметры стратегии</h5>
+        <div class="card mb-4">
+            <div class="card-body">
+                <h5 class="card-title">Исторические данные</h5>
 
-                        <div class="mb-3">
-                            <label class="form-label">Выберите индикаторы:</label>
-                            <div class="row g-2" id="indicatorsContainer">
-                                <!-- Индикаторы будут добавлены через JS -->
-                            </div>
-                        </div>
-
-                        <div class="mb-3">
-                            <label for="logicSelect" class="form-label">Логика объединения сигналов:</label>
-                            <select class="form-select" id="logicSelect">
-                                <option value="AND">И (все индикаторы должны дать сигнал)</option>
-                                <option value="OR">ИЛИ (достаточно сигнала от одного индикатора)</option>
-                            </select>
-                        </div>
-                    </div>
+                <div class="data-upload-area" id="dataUploadArea">
+                    <i class="bi bi-file-earmark-arrow-up fs-1"></i>
+                    <p>Перетащите сюда JSON файл или кликните для выбора</p>
+                    <input type="file" id="fileInput" accept=".json" style="display: none;">
                 </div>
 
-                <div class="card mb-4">
-                    <div class="card-body">
-                        <h5 class="card-title">Параметры риска</h5>
-
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label for="initialCapital" class="form-label">Начальный капитал ($):</label>
-                                <input type="number" class="form-control" id="initialCapital" value="10000" min="100">
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label for="maxTradeAmount" class="form-label">Макс. сумма сделки ($):</label>
-                                <input type="number" class="form-control" id="maxTradeAmount" value="1000" min="10">
-                            </div>
-                        </div>
-
-                        <div class="row">
-                            <div class="col-md-6 mb-3">
-                                <label for="stopLoss" class="form-label">Стоп-лосс (%):</label>
-                                <input type="number" class="form-control" id="stopLoss" value="5" min="0.1" step="0.1">
-                            </div>
-                            <div class="col-md-6 mb-3">
-                                <label for="takeProfit" class="form-label">Тейк-профит (%):</label>
-                                <input type="number" class="form-control" id="takeProfit" value="10" min="0.1" step="0.1">
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="col-md-4">
-                <div class="card mb-4">
-                    <div class="card-body">
-                        <h5 class="card-title">Исторические данные</h5>
-                        <div id="dataInfo" class="mb-3">
-                            <p>Загрузите данные через <a href="/">основную форму</a></p>
-                        </div>
-                        <button id="runBacktestBtn" class="btn btn-primary w-100" disabled>
-                            <i class="bi bi-play-circle"></i> Запустить бэктест
-                        </button>
-                    </div>
-                </div>
-
-                <div class="card mb-4">
-                    <div class="card-body">
-                        <h5 class="card-title">Результаты</h5>
-                        <div id="resultsContainer">
-                            <p class="text-muted">Результаты появятся здесь после выполнения бэктеста</p>
-                        </div>
-                    </div>
+                <div id="dataInfo" class="mt-3">
+                    <div class="alert alert-warning">Данные не загружены</div>
                 </div>
             </div>
         </div>
 
         <div class="card mb-4">
             <div class="card-body">
-                <h5 class="card-title">Графики</h5>
+                <h5 class="card-title">Параметры стратегии</h5>
+
+                <div class="row" id="indicatorsContainer"></div>
+
+                <div class="mb-3">
+                    <label for="logicSelect" class="form-label">Логика торговли:</label>
+                    <select class="form-select" id="logicSelect">
+                        <option value="AND">Все индикаторы должны давать сигнал</option>
+                        <option value="OR">Достаточно сигнала от любого индикатора</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-body">
+                <h5 class="card-title">Параметры портфеля</h5>
+
                 <div class="row">
-                    <div class="col-md-12">
+                    <div class="col-md-6 mb-3">
+                        <label for="initialCapital" class="form-label">Начальный капитал:</label>
+                        <input type="number" class="form-control" id="initialCapital" value="10000" min="1">
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="maxTradeAmount" class="form-label">Макс. сумма сделки:</label>
+                        <input type="number" class="form-control" id="maxTradeAmount" value="1000" min="1">
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="stopLoss" class="form-label">Стоп-лосс (%):</label>
+                        <input type="number" class="form-control" id="stopLoss" value="5" min="0" max="100" step="0.1">
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <label for="takeProfit" class="form-label">Тейк-профит (%):</label>
+                        <input type="number" class="form-control" id="takeProfit" value="10" min="0" max="100" step="0.1">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <button id="runBacktestBtn" class="btn btn-success mb-4" disabled>
+            <i class="bi bi-play-fill"></i> Запустить бэктест
+        </button>
+
+        <div id="loadingIndicator">
+            <div class="spinner-border text-light" role="status">
+                <span class="visually-hidden">Загрузка...</span>
+            </div>
+        </div>
+
+        <div id="resultsContainer" class="hidden">
+            <div class="card mb-4">
+                <div class="card-body">
+                    <h5 class="card-title">Результаты</h5>
+                    <div id="resultsDiv"></div>
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-body">
+                    <h5 class="card-title">Сделки</h5>
+                    <div class="table-responsive">
+                        <table class="table table-striped" id="tradesTable">
+                            <thead>
+                                <tr>
+                                    <th>Дата</th>
+                                    <th>Тип</th>
+                                    <th>Цена</th>
+                                    <th>Сумма</th>
+                                    <th>Прибыль</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-body">
+                    <h5 class="card-title">График цены</h5>
+                    <div class="chart-container">
                         <canvas id="priceChart"></canvas>
                     </div>
                 </div>
-                <div class="row mt-4">
-                    <div class="col-md-12">
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-body">
+                    <h5 class="card-title">График портфеля</h5>
+                    <div class="chart-container">
                         <canvas id="portfolioChart"></canvas>
                     </div>
                 </div>
             </div>
         </div>
-
-        <div class="card">
-            <div class="card-body">
-                <h5 class="card-title">История сделок</h5>
-                <div class="table-responsive">
-                    <table class="table table-striped" id="tradesTable">
-                        <thead>
-                            <tr>
-                                <th>Дата</th>
-                                <th>Тип</th>
-                                <th>Цена</th>
-                                <th>Сумма</th>
-                                <th>Прибыль</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <!-- Сделки будут добавлены через JS -->
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div id="loadingIndicator" class="loading-overlay">
-        <div class="spinner"></div>
-        <span class="text-white ms-3">Выполняется бэктест...</span>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="{{ url_for('static', filename='backtest.js') }}"></script>
+
+
 </body>
 </html>

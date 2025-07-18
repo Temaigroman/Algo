@@ -224,3 +224,55 @@ def run_backtest():
     except Exception as e:
         app.logger.error(f"Backtest API error: {str(e)}", exc_info=True)
         return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/backtest', methods=['POST'])
+def run_backtest():
+    try:
+        # Получаем данные из запроса
+        request_data = request.get_json()
+
+        # Проверяем наличие данных
+        if not request_data or 'data' not in request_data:
+            return jsonify({'error': 'No data provided'}), 400
+
+        # Создаем временный файл
+        with tempfile.NamedTemporaryFile(mode='w+', suffix='.json', delete=False) as tmp:
+            json.dump(request_data['data'], tmp)
+            tmp_path = tmp.name
+
+        # Создаем бэктестер и загружаем данные
+        backtester = Backtester()
+        if not backtester.load_data_from_json(tmp_path):
+            return jsonify({'error': 'Failed to load data'}), 400
+
+        # Устанавливаем параметры
+        backtester.strategy_params = request_data.get('strategy_params', {'indicators': [], 'logic': 'AND'})
+        backtester.initial_capital = float(request_data.get('initial_capital', 10000))
+        backtester.max_trade_amount = float(request_data.get('max_trade_amount', 1000))
+        backtester.stop_loss = float(request_data.get('stop_loss', 0.05))
+        backtester.take_profit = float(request_data.get('take_profit', 0.10))
+
+        # Запускаем бэктест
+        backtester.run_backtest()
+
+        # Формируем результаты
+        result = {
+            'initial_capital': backtester.initial_capital,
+            'final_capital': backtester.portfolio_values[-1],
+            'total_return': (backtester.portfolio_values[
+                                 -1] - backtester.initial_capital) / backtester.initial_capital * 100,
+            'max_drawdown': max(
+                [(max(backtester.portfolio_values[:i + 1]) - val) / max(backtester.portfolio_values[:i + 1])
+                 for i, val in enumerate(backtester.portfolio_values)]) * 100,
+            'trades': backtester.trades,
+            'portfolio_values': backtester.portfolio_values
+        }
+
+        # Удаляем временный файл
+        os.unlink(tmp_path)
+
+        return jsonify(result)
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500

@@ -6,6 +6,8 @@ from ta.trend import SMAIndicator, EMAIndicator, MACD
 from ta.momentum import RSIIndicator
 from ta.volatility import BollingerBands
 import matplotlib
+import tempfile
+import os
 
 
 class Backtester:
@@ -16,21 +18,29 @@ class Backtester:
         self.stop_loss = 0.05  # 5%
         self.take_profit = 0.10  # 10%
         self.strategy_params = {
-            'indicators': [],  # Теперь храним список индикаторов
-            'logic': 'AND'  # Логика объединения сигналов (AND/OR)
+            'indicators': [],
+            'logic': 'AND'
         }
         self.trades = []
         self.portfolio_values = []
 
-    def load_data_from_json(self, filename):
-        """Загрузка исторических данных из JSON файла"""
+    def load_data_from_json(self, data):
+        """Загрузка исторических данных из JSON объекта"""
         try:
-            with open(filename, 'r') as f:
-                data = json.load(f)
-            self.data = pd.DataFrame(data)
+            if isinstance(data, str):
+                # Если передана строка, пытаемся загрузить как JSON
+                data = json.loads(data)
+
+            self.data = pd.DataFrame(data['data'])
             self.data['Date'] = pd.to_datetime(self.data['Date'])
             self.data.set_index('Date', inplace=True)
-            print(f"Данные успешно загружены. Период: {self.data.index[0].date()} - {self.data.index[-1].date()}")
+
+            # Сохраняем метаданные если они есть
+            self.ticker = data.get('ticker', 'UNKNOWN')
+            self.start_date = data.get('startDate', self.data.index[0].date())
+            self.end_date = data.get('endDate', self.data.index[-1].date())
+            self.interval = data.get('interval', '1d')
+
             return True
         except Exception as e:
             print(f"Ошибка загрузки данных: {e}")
@@ -107,81 +117,27 @@ class Backtester:
 
         return True
 
-    def select_indicators(self):
-        """Выбор нескольких индикаторов"""
-        print("\nДоступные индикаторы:")
-        print("1. SMA (Простая скользящая средняя)")
-        print("2. EMA (Экспоненциальная скользящая средняя)")
-        print("3. RSI (Индекс относительной силы)")
-        print("4. Bollinger Bands (Полосы Боллинджера)")
-        print("5. MACD (Moving Average Convergence Divergence)")
+    def set_strategy_parameters(self, indicators, logic='AND'):
+        """Установка параметров стратегии"""
+        self.strategy_params = {
+            'indicators': indicators,
+            'logic': logic
+        }
 
-        selected = []
-        while True:
-            choice = input("Выберите индикатор (1-5) или 'готово' для завершения: ")
-            if choice.lower() == 'готово':
-                break
+        # Добавляем индикаторы в данные
+        for indicator in indicators:
+            self.add_indicator(indicator['type'], indicator)
 
-            if choice == '1':
-                window = int(input("Введите период SMA (например, 20): "))
-                self.add_indicator('SMA', {'window': window})
-                selected.append(f"SMA({window})")
-
-            elif choice == '2':
-                window = int(input("Введите период EMA (например, 20): "))
-                self.add_indicator('EMA', {'window': window})
-                selected.append(f"EMA({window})")
-
-            elif choice == '3':
-                window = int(input("Введите период RSI (например, 14): "))
-                overbought = int(input("Уровень перекупленности (например, 70): "))
-                oversold = int(input("Уровень перепроданности (например, 30): "))
-                self.add_indicator('RSI', {'window': window, 'overbought': overbought, 'oversold': oversold})
-                selected.append(f"RSI({window})")
-
-            elif choice == '4':
-                window = int(input("Введите период (например, 20): "))
-                std_dev = int(input("Количество стандартных отклонений (например, 2): "))
-                self.add_indicator('Bollinger', {'window': window, 'std_dev': std_dev})
-                selected.append(f"BB({window},{std_dev})")
-
-            elif choice == '5':
-                fast = int(input("Быстрый период (по умолчанию 12): ") or 12)
-                slow = int(input("Медленный период (по умолчанию 26): ") or 26)
-                signal = int(input("Сигнальный период (по умолчанию 9): ") or 9)
-                self.add_indicator('MACD', {'fast': fast, 'slow': slow, 'signal': signal})
-                selected.append(f"MACD({fast},{slow},{signal})")
-
-            else:
-                print("Неверный выбор. Попробуйте снова.")
-
-        if not selected:
-            print("Не выбрано ни одного индикатора")
-            return False
-
-        # Выбор логики объединения сигналов
-        logic = input("Логика объединения сигналов (AND/OR, по умолчанию AND): ").upper() or 'AND'
-        if logic not in ['AND', 'OR']:
-            print("Неверный выбор логики. Используется AND")
-            logic = 'AND'
-
-        self.strategy_params['logic'] = logic
-        print(f"\nВыбранные индикаторы ({logic}): {', '.join(selected)}")
-        return True
-
-    def set_risk_parameters(self):
+    def set_risk_parameters(self, initial_capital=10000, max_trade_amount=1000,
+                            stop_loss=0.05, take_profit=0.10):
         """Установка параметров риска"""
-        self.initial_capital = float(
-            input(f"Начальный капитал (по умолчанию {self.initial_capital}): ") or self.initial_capital)
-        self.max_trade_amount = float(
-            input(f"Максимальная сумма сделки (по умолчанию {self.max_trade_amount}): ") or self.max_trade_amount)
-        self.stop_loss = float(
-            input(f"Стоп-лосс (% от цены входа, по умолчанию {self.stop_loss * 100}%): ") or self.stop_loss) / 100
-        self.take_profit = float(
-            input(f"Тейк-профит (% от цены входа, по умолчанию {self.take_profit * 100}%): ") or self.take_profit) / 100
+        self.initial_capital = float(initial_capital)
+        self.max_trade_amount = float(max_trade_amount)
+        self.stop_loss = float(stop_loss)
+        self.take_profit = float(take_profit)
 
     def get_signal(self, i):
-        """Генерация торгового сигнала на основе выбранных индикаторов"""
+        """Генерация торгового сигнала"""
         if not self.strategy_params['indicators']:
             return None
 
@@ -238,18 +194,16 @@ class Backtester:
                 else:
                     signals.append(None)
 
-        # Фильтрация None значений
         valid_signals = [s for s in signals if s is not None]
         if not valid_signals:
             return None
 
-        # Применяем логику объединения
         if self.strategy_params['logic'] == 'AND':
             if all(s == 'buy' for s in valid_signals):
                 return 'buy'
             elif all(s == 'sell' for s in valid_signals):
                 return 'sell'
-        else:  # OR логика
+        else:
             if 'buy' in valid_signals:
                 return 'buy'
             elif 'sell' in valid_signals:
@@ -258,10 +212,9 @@ class Backtester:
         return None
 
     def run_backtest(self):
-        """Запуск бэктеста с комбинированными индикаторами"""
+        """Запуск бэктеста и возврат результатов"""
         if self.data is None:
-            print("Данные не загружены")
-            return
+            return {'error': 'Data not loaded'}
 
         capital = self.initial_capital
         position = 0
@@ -278,17 +231,17 @@ class Backtester:
             signal = self.get_signal(i)
             current_price = self.data.iloc[i]['Close']
 
-            # Логика торговли
             if signal == 'buy' and position == 0 and capital > 0:
                 trade_amount = min(capital, self.max_trade_amount)
                 position = trade_amount / current_price
                 entry_price = current_price
                 capital -= trade_amount
                 self.trades.append({
-                    'date': self.data.index[i],
+                    'date': self.data.index[i].isoformat(),
                     'type': 'buy',
                     'price': current_price,
-                    'amount': trade_amount
+                    'amount': trade_amount,
+                    'profit': None
                 })
 
             elif signal == 'sell' and position > 0:
@@ -302,7 +255,7 @@ class Backtester:
                     losing_trades += 1
 
                 self.trades.append({
-                    'date': self.data.index[i],
+                    'date': self.data.index[i].isoformat(),
                     'type': 'sell',
                     'price': current_price,
                     'amount': trade_value,
@@ -310,7 +263,6 @@ class Backtester:
                 })
                 position = 0
 
-            # Проверка стоп-лосса и тейк-профита
             elif position > 0:
                 current_profit_pct = (current_price - entry_price) / entry_price
 
@@ -320,7 +272,7 @@ class Backtester:
                     losing_trades += 1
 
                     self.trades.append({
-                        'date': self.data.index[i],
+                        'date': self.data.index[i].isoformat(),
                         'type': 'stop_loss',
                         'price': current_price,
                         'amount': trade_value,
@@ -334,7 +286,7 @@ class Backtester:
                     winning_trades += 1
 
                     self.trades.append({
-                        'date': self.data.index[i],
+                        'date': self.data.index[i].isoformat(),
                         'type': 'take_profit',
                         'price': current_price,
                         'amount': trade_value,
@@ -342,18 +294,15 @@ class Backtester:
                     })
                     position = 0
 
-            # Расчет текущей стоимости портфеля
             portfolio_value = capital + (position * current_price if position > 0 else 0)
             self.portfolio_values.append(portfolio_value)
 
-            # Расчет максимальной просадки
             if portfolio_value > peak:
                 peak = portfolio_value
             drawdown = (peak - portfolio_value) / peak
             if drawdown > max_drawdown:
                 max_drawdown = drawdown
 
-        # Закрываем открытую позицию в конце периода
         if position > 0:
             trade_value = position * current_price
             capital += trade_value
@@ -365,33 +314,35 @@ class Backtester:
                 losing_trades += 1
 
             self.trades.append({
-                'date': self.data.index[-1],
+                'date': self.data.index[-1].isoformat(),
                 'type': 'close',
                 'price': current_price,
                 'amount': trade_value,
                 'profit': profit
             })
 
-        # Результаты
         total_return = (capital - self.initial_capital) / self.initial_capital * 100
         profit_factor = winning_trades / losing_trades if losing_trades > 0 else float('inf')
 
-        print("\nРезультаты бэктеста:")
-        print("=" * 50)
-        print(f"Начальный капитал: ${self.initial_capital:.2f}")
-        print(f"Конечный капитал: ${capital:.2f}")
-        print(f"Общая доходность: {total_return:.2f}%")
-        print(f"Прибыльные сделки: {winning_trades}")
-        print(f"Убыточные сделки: {losing_trades}")
-        print(f"Процент прибыльных сделок: {winning_trades / (winning_trades + losing_trades) * 100:.2f}%")
-        print(f"Фактор прибыли: {profit_factor:.2f}")
-        print(f"Максимальная просадка: {max_drawdown * 100:.2f}%")
-        print("=" * 50)
+        return {
+            'initial_capital': self.initial_capital,
+            'final_capital': capital,
+            'total_return': total_return,
+            'max_drawdown': max_drawdown * 100,
+            'winning_trades': winning_trades,
+            'losing_trades': losing_trades,
+            'profit_factor': profit_factor,
+            'trades': self.trades,
+            'portfolio_values': self.portfolio_values,
+            'equity_curve': [{'date': self.data.index[i].isoformat(), 'value': val}
+                             for i, val in enumerate(self.portfolio_values[1:], 1)]
+        }
 
-        self.plot_results()
+    def plot_results(self, save_path=None):
+        """Визуализация результатов (для использования в CLI)"""
+        if not self.data or not self.trades:
+            return False
 
-    def plot_results(self):
-        """Визуализация результатов с несколькими индикаторами"""
         try:
             plt.figure(figsize=(14, 8))
             n_plots = 2 + len(self.strategy_params['indicators'])
@@ -400,14 +351,14 @@ class Backtester:
             plt.subplot(n_plots, 1, 1)
             plt.plot(self.data.index, self.data['Close'], label='Цена закрытия')
 
-            # Отметки сделок
-            buy_dates = [t['date'] for t in self.trades if t['type'] == 'buy']
+            buy_dates = [pd.to_datetime(t['date']) for t in self.trades if t['type'] == 'buy']
             buy_prices = [t['price'] for t in self.trades if t['type'] == 'buy']
             plt.scatter(buy_dates, buy_prices, color='g', label='Покупка', marker='^')
 
-            sell_dates = [t['date'] for t in self.trades if t['type'] in ['sell', 'stop_loss', 'take_profit', 'close']]
-            sell_prices = [t['price'] for t in self.trades if
-                           t['type'] in ['sell', 'stop_loss', 'take_profit', 'close']]
+            sell_dates = [pd.to_datetime(t['date']) for t in self.trades
+                          if t['type'] in ['sell', 'stop_loss', 'take_profit', 'close']]
+            sell_prices = [t['price'] for t in self.trades
+                           if t['type'] in ['sell', 'stop_loss', 'take_profit', 'close']]
             colors = ['r' if t['profit'] < 0 else 'g' for t in self.trades
                       if t['type'] in ['sell', 'stop_loss', 'take_profit', 'close']]
             plt.scatter(sell_dates, sell_prices, color=colors, label='Продажа', marker='v')
@@ -459,20 +410,45 @@ class Backtester:
             plt.xlabel('Дата')
             plt.tight_layout()
 
-            # Проверка доступности GUI
-            if matplotlib.get_backend().lower() in ['agg', 'pdf', 'svg', 'ps']:
-                plt.savefig('backtest_results.png')
-                print("\nГрафик сохранен в backtest_results.png")
+            if save_path:
+                plt.savefig(save_path)
+                plt.close()
+                return save_path
             else:
                 plt.show()
+                return True
 
         except Exception as e:
-            print(f"\nОшибка при построении графиков: {e}")
-            plt.savefig('backtest_results.png')
-            print("График сохранен в backtest_results.png")
+            print(f"Ошибка при построении графиков: {e}")
+            return False
 
 
-def main():
+def run_backtest_from_json(json_data, strategy_params, risk_params):
+    """Функция для запуска бэктеста из JSON данных"""
+    backtester = Backtester()
+
+    if not backtester.load_data_from_json(json_data):
+        return {'error': 'Failed to load data'}
+
+    backtester.set_strategy_parameters(
+        indicators=strategy_params.get('indicators', []),
+        logic=strategy_params.get('logic', 'AND')
+    )
+
+    backtester.set_risk_parameters(
+        initial_capital=risk_params.get('initial_capital', 10000),
+        max_trade_amount=risk_params.get('max_trade_amount', 1000),
+        stop_loss=risk_params.get('stop_loss', 0.05),
+        take_profit=risk_params.get('take_profit', 0.10)
+    )
+
+    return backtester.run_backtest()
+
+
+if __name__ == "__main__":
+    # CLI интерфейс для тестирования
+    matplotlib.use('TkAgg')
+
     print("Сервис бэктестинга торговых стратегий")
     print("=" * 50)
 
@@ -481,22 +457,76 @@ def main():
     # Загрузка данных
     while True:
         filename = input("Введите путь к JSON файлу с историческими данными: ")
-        if backtester.load_data_from_json(filename):
-            break
+        try:
+            with open(filename, 'r') as f:
+                data = json.load(f)
+            if backtester.load_data_from_json(data):
+                break
+        except Exception as e:
+            print(f"Ошибка: {e}")
 
     # Выбор индикаторов
+    indicators = []
+    print("\nДоступные индикаторы:")
+    print("1. SMA (Простая скользящая средняя)")
+    print("2. EMA (Экспоненциальная скользящая средняя)")
+    print("3. RSI (Индекс относительной силы)")
+    print("4. Bollinger Bands (Полосы Боллинджера)")
+    print("5. MACD (Moving Average Convergence Divergence)")
+
     while True:
-        if backtester.select_indicators():
+        choice = input("Выберите индикатор (1-5) или 'готово' для завершения: ")
+        if choice.lower() == 'готово':
             break
 
-    # Настройка параметров
-    backtester.set_risk_parameters()
+        if choice == '1':
+            window = int(input("Введите период SMA (например, 20): "))
+            indicators.append({'type': 'SMA', 'window': window, 'column': 'Close'})
+        elif choice == '2':
+            window = int(input("Введите период EMA (например, 20): "))
+            indicators.append({'type': 'EMA', 'window': window, 'column': 'Close'})
+        elif choice == '3':
+            window = int(input("Введите период RSI (например, 14): "))
+            overbought = int(input("Уровень перекупленности (например, 70): "))
+            oversold = int(input("Уровень перепроданности (например, 30): "))
+            indicators.append({'type': 'RSI', 'window': window, 'overbought': overbought,
+                               'oversold': oversold, 'column': 'Close'})
+        elif choice == '4':
+            window = int(input("Введите период (например, 20): "))
+            std_dev = int(input("Количество стандартных отклонений (например, 2): "))
+            indicators.append({'type': 'Bollinger', 'window': window, 'std_dev': std_dev,
+                               'column': 'Close'})
+        elif choice == '5':
+            fast = int(input("Быстрый период (по умолчанию 12): ") or 12)
+            slow = int(input("Медленный период (по умолчанию 26): ") or 26)
+            signal = int(input("Сигнальный период (по умолчанию 9): ") or 9)
+            indicators.append({'type': 'MACD', 'fast': fast, 'slow': slow,
+                               'signal': signal, 'column': 'Close'})
+        else:
+            print("Неверный выбор. Попробуйте снова.")
+
+    logic = input("Логика объединения сигналов (AND/OR, по умолчанию AND): ").upper() or 'AND'
+    backtester.set_strategy_parameters(indicators, logic)
+
+    # Настройка параметров риска
+    backtester.set_risk_parameters(
+        initial_capital=float(input(f"Начальный капитал (по умолчанию 10000): ") or 10000),
+        max_trade_amount=float(input(f"Макс. сумма сделки (по умолчанию 1000): ") or 1000),
+        stop_loss=float(input(f"Стоп-лосс (% по умолчанию 5): ") or 5) / 100,
+        take_profit=float(input(f"Тейк-профит (% по умолчанию 10): ") or 10) / 100
+    )
 
     # Запуск бэктеста
-    backtester.run_backtest()
+    results = backtester.run_backtest()
+    print("\nРезультаты бэктеста:")
+    print("=" * 50)
+    print(f"Начальный капитал: ${results['initial_capital']:.2f}")
+    print(f"Конечный капитал: ${results['final_capital']:.2f}")
+    print(f"Общая доходность: {results['total_return']:.2f}%")
+    print(f"Прибыльные сделки: {results['winning_trades']}")
+    print(f"Убыточные сделки: {results['losing_trades']}")
+    print(f"Максимальная просадка: {results['max_drawdown']:.2f}%")
+    print("=" * 50)
 
-
-if __name__ == "__main__":
-    # Явно устанавливаем бэкенд для отображения графиков
-    matplotlib.use('TkAgg')  # Можно также использовать 'Qt5Agg'
-    main()
+    # Построение графиков
+    backtester.plot_results()
