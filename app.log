@@ -197,3 +197,6 @@ AttributeError: 'MoexAlgoHistory' object has no attribute 'is_valid_ticker'
 2025-07-18 15:58:54,897 INFO: Request for AAPL from 2024-07-18 to 2025-07-18, interval 1d [in D:\!IT\Algo\app.py:121]
 2025-07-18 16:01:38,086 INFO: YahooFinanceHistory service initialized successfully [in D:\!IT\Algo\app.py:54]
 2025-07-18 16:01:38,839 INFO: YahooFinanceHistory service initialized successfully [in D:\!IT\Algo\app.py:54]
+2025-07-22 16:42:14,418 INFO: YahooFinanceHistory service initialized successfully [in D:\!IT\Algo\app.py:54]
+2025-07-22 16:42:15,267 INFO: YahooFinanceHistory service initialized successfully [in D:\!IT\Algo\app.py:54]
+2025-07-22 16:58:34,471 INFO: Request for TSLA from 2024-07-22 to 2025-07-22, interval 1d [in D:\!IT\Algo\app.py:121]
