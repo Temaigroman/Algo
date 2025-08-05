@@ -1,5 +1,6 @@
 import json
 import pandas as pd
+from flask import Flask, request, jsonify
 from datetime import datetime
 import matplotlib.pyplot as plt
 from ta.trend import SMAIndicator, EMAIndicator, MACD
@@ -8,6 +9,10 @@ from ta.volatility import BollingerBands
 import matplotlib
 import tempfile
 import os
+from flask_cors import CORS  # Импортируем CORS
+
+app = Flask(__name__)
+CORS(app)  # Включаем CORS для всех маршрутов
 
 
 class Backtester:
@@ -445,88 +450,33 @@ def run_backtest_from_json(json_data, strategy_params, risk_params):
     return backtester.run_backtest()
 
 
+@app.route('/backtest', methods=['POST'])
+def handle_backtest():
+    try:
+        data = request.get_json()
+
+        # Проверка обязательных полей
+        if not data or 'data' not in data:
+            return jsonify({'error': 'Missing required data'}), 400
+
+        # Запуск бэктеста
+        results = run_backtest_from_json(
+            data['data'],
+            data.get('strategy_params', {}),
+            {
+                'initial_capital': data.get('initial_capital', 10000),
+                'max_trade_amount': data.get('max_trade_amount', 1000),
+                'stop_loss': data.get('stop_loss', 0.05),
+                'take_profit': data.get('take_profit', 0.10)
+            }
+        )
+
+        return jsonify(results)
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
 if __name__ == "__main__":
-    # CLI интерфейс для тестирования
-    matplotlib.use('TkAgg')
-
-    print("Сервис бэктестинга торговых стратегий")
-    print("=" * 50)
-
-    backtester = Backtester()
-
-    # Загрузка данных
-    while True:
-        filename = input("Введите путь к JSON файлу с историческими данными: ")
-        try:
-            with open(filename, 'r') as f:
-                data = json.load(f)
-            if backtester.load_data_from_json(data):
-                break
-        except Exception as e:
-            print(f"Ошибка: {e}")
-
-    # Выбор индикаторов
-    indicators = []
-    print("\nДоступные индикаторы:")
-    print("1. SMA (Простая скользящая средняя)")
-    print("2. EMA (Экспоненциальная скользящая средняя)")
-    print("3. RSI (Индекс относительной силы)")
-    print("4. Bollinger Bands (Полосы Боллинджера)")
-    print("5. MACD (Moving Average Convergence Divergence)")
-
-    while True:
-        choice = input("Выберите индикатор (1-5) или 'готово' для завершения: ")
-        if choice.lower() == 'готово':
-            break
-
-        if choice == '1':
-            window = int(input("Введите период SMA (например, 20): "))
-            indicators.append({'type': 'SMA', 'window': window, 'column': 'Close'})
-        elif choice == '2':
-            window = int(input("Введите период EMA (например, 20): "))
-            indicators.append({'type': 'EMA', 'window': window, 'column': 'Close'})
-        elif choice == '3':
-            window = int(input("Введите период RSI (например, 14): "))
-            overbought = int(input("Уровень перекупленности (например, 70): "))
-            oversold = int(input("Уровень перепроданности (например, 30): "))
-            indicators.append({'type': 'RSI', 'window': window, 'overbought': overbought,
-                               'oversold': oversold, 'column': 'Close'})
-        elif choice == '4':
-            window = int(input("Введите период (например, 20): "))
-            std_dev = int(input("Количество стандартных отклонений (например, 2): "))
-            indicators.append({'type': 'Bollinger', 'window': window, 'std_dev': std_dev,
-                               'column': 'Close'})
-        elif choice == '5':
-            fast = int(input("Быстрый период (по умолчанию 12): ") or 12)
-            slow = int(input("Медленный период (по умолчанию 26): ") or 26)
-            signal = int(input("Сигнальный период (по умолчанию 9): ") or 9)
-            indicators.append({'type': 'MACD', 'fast': fast, 'slow': slow,
-                               'signal': signal, 'column': 'Close'})
-        else:
-            print("Неверный выбор. Попробуйте снова.")
-
-    logic = input("Логика объединения сигналов (AND/OR, по умолчанию AND): ").upper() or 'AND'
-    backtester.set_strategy_parameters(indicators, logic)
-
-    # Настройка параметров риска
-    backtester.set_risk_parameters(
-        initial_capital=float(input(f"Начальный капитал (по умолчанию 10000): ") or 10000),
-        max_trade_amount=float(input(f"Макс. сумма сделки (по умолчанию 1000): ") or 1000),
-        stop_loss=float(input(f"Стоп-лосс (% по умолчанию 5): ") or 5) / 100,
-        take_profit=float(input(f"Тейк-профит (% по умолчанию 10): ") or 10) / 100
-    )
-
-    # Запуск бэктеста
-    results = backtester.run_backtest()
-    print("\nРезультаты бэктеста:")
-    print("=" * 50)
-    print(f"Начальный капитал: ${results['initial_capital']:.2f}")
-    print(f"Конечный капитал: ${results['final_capital']:.2f}")
-    print(f"Общая доходность: {results['total_return']:.2f}%")
-    print(f"Прибыльные сделки: {results['winning_trades']}")
-    print(f"Убыточные сделки: {results['losing_trades']}")
-    print(f"Максимальная просадка: {results['max_drawdown']:.2f}%")
-    print("=" * 50)
-
-    # Построение графиков
-    backtester.plot_results()
+    # Запускаем Flask сервер
+    app.run(host='0.0.0.0', port=5000, debug=True)

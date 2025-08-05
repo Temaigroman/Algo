@@ -217,7 +217,7 @@ document.addEventListener('DOMContentLoaded', () => {
         };
 
         // Используем абсолютный URL для API
-        const apiUrl = 'http://localhost:5000/api/backtest'; // Замените на ваш реальный URL
+        const apiUrl = 'http://127.0.0.1:5000/backtest'; // Замените на ваш реальный URL
 
         const response = await fetch(apiUrl, {
             method: 'POST',
