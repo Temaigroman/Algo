@@ -9,7 +9,8 @@ from ta.volatility import BollingerBands
 import matplotlib
 import tempfile
 import os
-from flask_cors import CORS
+from flask import Flask, request, jsonify
+from flask_cors import CORS  # Импортируем CORS
 
 app = Flask(__name__)
 CORS(app)
@@ -469,8 +470,16 @@ def run_backtest_from_json(json_data, strategy_params, risk_params):
     return backtester.run_backtest()
 
 
-@app.route('/backtest', methods=['POST'])
+@app.route('/backtest', methods=['POST', 'OPTIONS'])  # Добавляем поддержку OPTIONS для CORS
 def handle_backtest():
+    if request.method == 'OPTIONS':
+        # Предварительный запрос CORS
+        response = jsonify({'status': 'ok'})
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        response.headers.add('Access-Control-Allow-Headers', '*')
+        response.headers.add('Access-Control-Allow-Methods', 'POST, OPTIONS')
+        return response
+
     try:
         data = request.get_json()
 
@@ -490,12 +499,14 @@ def handle_backtest():
             }
         )
 
-        return jsonify(results)
+        response = jsonify(results)
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        return response
 
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
+        response = jsonify({'error': str(e)})
+        response.headers.add('Access-Control-Allow-Origin', '*')
+        return response, 500
 
 if __name__ == "__main__":
-    # Запускаем Flask сервер
     app.run(host='0.0.0.0', port=5000, debug=True)

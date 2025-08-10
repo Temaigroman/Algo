@@ -153,52 +153,52 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Запуск бэктеста
     async function runBacktest() {
-        if (!historicalData || selectedIndicators.length === 0) return;
+    if (!historicalData || selectedIndicators.length === 0) return;
 
-        try {
-            elements.runBacktestBtn.disabled = true;
-            elements.loadingIndicator.style.display = 'flex';
-            elements.resultsContainer.classList.add('hidden');
+    try {
+        elements.runBacktestBtn.disabled = true;
+        elements.loadingIndicator.style.display = 'flex';
+        elements.resultsContainer.classList.add('hidden');
 
-            const params = {
-                data: historicalData,
-                strategy_params: {
-                    indicators: selectedIndicators.map(ind => ({
-                        type: ind.name.toUpperCase(),
-                        ...ind.params
-                    })),
-                    logic: elements.logicSelect.value
-                },
-                initial_capital: parseFloat(elements.initialCapital.value),
-                max_trade_amount: parseFloat(elements.maxTradeAmount.value),
-                stop_loss: parseFloat(elements.stopLoss.value) / 100,
-                take_profit: parseFloat(elements.takeProfit.value) / 100
-            };
+        const params = {
+            data: historicalData,
+            strategy_params: {
+                indicators: selectedIndicators.map(ind => ({
+                    type: ind.name.toUpperCase(),
+                    ...ind.params
+                })),
+                logic: elements.logicSelect.value
+            },
+            initial_capital: parseFloat(elements.initialCapital.value),
+            max_trade_amount: parseFloat(elements.maxTradeAmount.value),
+            stop_loss: parseFloat(elements.stopLoss.value) / 100,
+            take_profit: parseFloat(elements.takeProfit.value) / 100
+        };
 
-            const response = await fetch('/backtest', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(params)
-            });
+        const response = await fetch('http://localhost:5000/backtest', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(params)
+        });
 
-            if (!response.ok) {
-                const error = await response.json();
-                throw new Error(error.error || 'Ошибка сервера');
-            }
-
-            const data = await response.json();
-            displayResults(data);
-
-        } catch (error) {
-            console.error('Backtest error:', error);
-            showError(`Ошибка при выполнении бэктеста: ${error.message}`);
-        } finally {
-            elements.runBacktestBtn.disabled = false;
-            elements.loadingIndicator.style.display = 'none';
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(errorText || 'Ошибка сервера');
         }
+
+        const data = await response.json();
+        displayResults(data);
+
+    } catch (error) {
+        console.error('Backtest error:', error);
+        showError(`Ошибка при выполнении бэктеста: ${error.message}`);
+    } finally {
+        elements.runBacktestBtn.disabled = false;
+        elements.loadingIndicator.style.display = 'none';
     }
+}
 
     // Отображение результатов
     function displayResults(data) {
