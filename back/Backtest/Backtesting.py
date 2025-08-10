@@ -9,11 +9,10 @@ from ta.volatility import BollingerBands
 import matplotlib
 import tempfile
 import os
-from flask_cors import CORS  # Импортируем CORS
+from flask_cors import CORS
 
 app = Flask(__name__)
-CORS(app)  # Включаем CORS для всех маршрутов
-
+CORS(app)
 
 class Backtester:
     def __init__(self):
@@ -28,19 +27,35 @@ class Backtester:
         }
         self.trades = []
         self.portfolio_values = []
+        self.ticker = 'UNKNOWN'
+        self.start_date = None
+        self.end_date = None
+        self.interval = '1d'
 
     def load_data_from_json(self, data):
-        """Загрузка исторических данных из JSON объекта"""
+        """Загрузка исторических данных из JSON объекта с нестандартными ключами"""
         try:
             if isinstance(data, str):
-                # Если передана строка, пытаемся загрузить как JSON
                 data = json.loads(data)
 
-            self.data = pd.DataFrame(data['data'])
-            self.data['Date'] = pd.to_datetime(self.data['Date'])
+            # Обработка нестандартных ключей вида "('Close', 'AAPL')"
+            processed_data = []
+            for item in data['data']:
+                new_item = {}
+                for key, value in item.items():
+                    if isinstance(key, str) and key.startswith("('") and key.endswith("')"):
+                        # Извлекаем 'Close' из "('Close', 'AAPL')"
+                        new_key = key.split("'")[1]
+                        new_item[new_key] = value
+                    else:
+                        new_item[key] = value
+                processed_data.append(new_item)
+
+            self.data = pd.DataFrame(processed_data)
+            self.data['Date'] = pd.to_datetime(self.data['Datetime'])  # Используем 'Datetime' как дату
             self.data.set_index('Date', inplace=True)
 
-            # Сохраняем метаданные если они есть
+            # Сохраняем метаданные
             self.ticker = data.get('ticker', 'UNKNOWN')
             self.start_date = data.get('startDate', self.data.index[0].date())
             self.end_date = data.get('endDate', self.data.index[-1].date())
@@ -134,7 +149,7 @@ class Backtester:
             self.add_indicator(indicator['type'], indicator)
 
     def set_risk_parameters(self, initial_capital=10000, max_trade_amount=1000,
-                            stop_loss=0.05, take_profit=0.10):
+                           stop_loss=0.05, take_profit=0.10):
         """Установка параметров риска"""
         self.initial_capital = float(initial_capital)
         self.max_trade_amount = float(max_trade_amount)
@@ -153,7 +168,7 @@ class Backtester:
         for indicator in self.strategy_params['indicators']:
             ind_type = indicator['type']
 
-            if ind_type == 'SMA' or ind_type == 'EMA':
+            if ind_type in ['SMA', 'EMA']:
                 col = f"{ind_type.lower()}_{indicator['window']}"
                 if (prev_price < self.data.iloc[i - 1][col] and
                         current_price > self.data.iloc[i][col]):
@@ -340,7 +355,11 @@ class Backtester:
             'trades': self.trades,
             'portfolio_values': self.portfolio_values,
             'equity_curve': [{'date': self.data.index[i].isoformat(), 'value': val}
-                             for i, val in enumerate(self.portfolio_values[1:], 1)]
+                            for i, val in enumerate(self.portfolio_values[1:], 1)],
+            'ticker': self.ticker,
+            'start_date': self.start_date.isoformat() if hasattr(self.start_date, 'isoformat') else str(self.start_date),
+            'end_date': self.end_date.isoformat() if hasattr(self.end_date, 'isoformat') else str(self.end_date),
+            'interval': self.interval
         }
 
     def plot_results(self, save_path=None):
@@ -361,14 +380,14 @@ class Backtester:
             plt.scatter(buy_dates, buy_prices, color='g', label='Покупка', marker='^')
 
             sell_dates = [pd.to_datetime(t['date']) for t in self.trades
-                          if t['type'] in ['sell', 'stop_loss', 'take_profit', 'close']]
+                         if t['type'] in ['sell', 'stop_loss', 'take_profit', 'close']]
             sell_prices = [t['price'] for t in self.trades
-                           if t['type'] in ['sell', 'stop_loss', 'take_profit', 'close']]
+                         if t['type'] in ['sell', 'stop_loss', 'take_profit', 'close']]
             colors = ['r' if t['profit'] < 0 else 'g' for t in self.trades
-                      if t['type'] in ['sell', 'stop_loss', 'take_profit', 'close']]
+                     if t['type'] in ['sell', 'stop_loss', 'take_profit', 'close']]
             plt.scatter(sell_dates, sell_prices, color=colors, label='Продажа', marker='v')
 
-            plt.title('График цены и торговых сигналов')
+            plt.title(f'{self.ticker} - График цены и торговых сигналов')
             plt.legend()
 
             # График стоимости портфеля
@@ -386,7 +405,7 @@ class Backtester:
                 if ind_type in ['SMA', 'EMA']:
                     col = f"{ind_type.lower()}_{indicator['window']}"
                     plt.plot(self.data.index, self.data[col],
-                             label=f"{ind_type}({indicator['window']})")
+                            label=f"{ind_type}({indicator['window']})")
                     plt.ylabel(f"{ind_type} Value")
 
                 elif ind_type == 'RSI':
@@ -407,7 +426,7 @@ class Backtester:
                     plt.plot(self.data.index, self.data['macd'], label='MACD')
                     plt.plot(self.data.index, self.data['macd_signal'], label='Signal')
                     plt.bar(self.data.index, self.data['macd_hist'],
-                            label='Histogram', color='gray', alpha=0.5)
+                           label='Histogram', color='gray', alpha=0.5)
                     plt.ylabel('MACD')
 
                 plt.legend()

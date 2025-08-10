@@ -117,14 +117,7 @@ document.addEventListener('DOMContentLoaded', () => {
         reader.onload = (e) => {
             try {
                 const parsedData = JSON.parse(e.target.result);
-
-                // Проверяем обязательные поля
-                if (!parsedData.data || !Array.isArray(parsedData.data)) {
-                    throw new Error('Неверный формат данных. Ожидается объект с полем data (массив)');
-                }
-
-                // Преобразуем данные в нужный формат
-                historicalData = transformData(parsedData);
+                historicalData = parsedData; // Сохраняем оригинальные данные
                 updateDataInfo();
                 updateRunButtonState();
                 showSuccess('Данные успешно загружены!');
@@ -136,40 +129,6 @@ document.addEventListener('DOMContentLoaded', () => {
         reader.readAsText(file);
     }
 
-    // Функция преобразования данных в нужный формат
-    function transformData(originalData) {
-        // Преобразуем массив данных
-        const transformedData = originalData.data.map(item => {
-            // Создаем новый объект с правильными ключами
-            const newItem = {
-                Date: item["('Datetime', '')"],
-                Open: item["('Open', 'AAPL')"],
-                High: item["('High', 'AAPL')"],
-                Low: item["('Low', 'AAPL')"],
-                Close: item["('Close', 'AAPL')"],
-                Volume: item["('Volume', 'AAPL')"]
-            };
-
-            // Удаляем NaN значения (если есть)
-            Object.keys(newItem).forEach(key => {
-                if (isNaN(newItem[key])) {
-                    newItem[key] = null;
-                }
-            });
-
-            return newItem;
-        });
-
-        // Возвращаем объект в нужном формате
-        return {
-            data: transformedData,
-            ticker: originalData.ticker,
-            startDate: originalData.startDate,
-            endDate: originalData.endDate,
-            interval: originalData.interval
-        };
-    }
-
     // Обновление информации о данных
     function updateDataInfo() {
         if (historicalData) {
@@ -179,7 +138,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     ${historicalData.ticker ? `<p><strong>Тикер:</strong> ${historicalData.ticker}</p>` : ''}
                     ${historicalData.startDate ? `<p><strong>Начальная дата:</strong> ${formatDate(historicalData.startDate)}</p>` : ''}
                     ${historicalData.endDate ? `<p><strong>Конечная дата:</strong> ${formatDate(historicalData.endDate)}</p>` : ''}
-                    <p><strong>Количество записей:</strong> ${historicalData.data.length}</p>
+                    <p><strong>Количество записей:</strong> ${historicalData.data ? historicalData.data.length : 0}</p>
                 </div>
             `;
         } else {
@@ -194,63 +153,52 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Запуск бэктеста
     async function runBacktest() {
-    if (!historicalData || selectedIndicators.length === 0) return;
+        if (!historicalData || selectedIndicators.length === 0) return;
 
-    try {
-        elements.runBacktestBtn.disabled = true;
-        elements.loadingIndicator.style.display = 'flex';
-        elements.resultsContainer.classList.add('hidden');
+        try {
+            elements.runBacktestBtn.disabled = true;
+            elements.loadingIndicator.style.display = 'flex';
+            elements.resultsContainer.classList.add('hidden');
 
-        const params = {
-            data: historicalData,
-            strategy_params: {
-                indicators: selectedIndicators.map(ind => ({
-                    type: ind.name.toUpperCase(),
-                    ...ind.params
-                })),
-                logic: elements.logicSelect.value
-            },
-            initial_capital: parseFloat(elements.initialCapital.value),
-            max_trade_amount: parseFloat(elements.maxTradeAmount.value),
-            stop_loss: parseFloat(elements.stopLoss.value) / 100,
-            take_profit: parseFloat(elements.takeProfit.value) / 100
-        };
+            const params = {
+                data: historicalData,
+                strategy_params: {
+                    indicators: selectedIndicators.map(ind => ({
+                        type: ind.name.toUpperCase(),
+                        ...ind.params
+                    })),
+                    logic: elements.logicSelect.value
+                },
+                initial_capital: parseFloat(elements.initialCapital.value),
+                max_trade_amount: parseFloat(elements.maxTradeAmount.value),
+                stop_loss: parseFloat(elements.stopLoss.value) / 100,
+                take_profit: parseFloat(elements.takeProfit.value) / 100
+            };
 
-        // Используем абсолютный URL для API
-        const apiUrl = 'http://127.0.0.1:5000/backtest'; // Замените на ваш реальный URL
+            const response = await fetch('/backtest', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(params)
+            });
 
-        const response = await fetch(apiUrl, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json'
-            },
-            body: JSON.stringify(params)
-        });
-
-        // Улучшенная обработка ошибок
-        if (!response.ok) {
-            const contentType = response.headers.get('content-type');
-            if (contentType && contentType.includes('application/json')) {
+            if (!response.ok) {
                 const error = await response.json();
-                throw new Error(error.error || `Ошибка сервера: ${response.status}`);
-            } else {
-                const text = await response.text();
-                throw new Error(`Ошибка сервера: ${response.status}. Ответ: ${text.substring(0, 100)}...`);
+                throw new Error(error.error || 'Ошибка сервера');
             }
+
+            const data = await response.json();
+            displayResults(data);
+
+        } catch (error) {
+            console.error('Backtest error:', error);
+            showError(`Ошибка при выполнении бэктеста: ${error.message}`);
+        } finally {
+            elements.runBacktestBtn.disabled = false;
+            elements.loadingIndicator.style.display = 'none';
         }
-
-        const data = await response.json();
-        displayResults(data);
-
-    } catch (error) {
-        console.error('Backtest error:', error);
-        showError(`Ошибка при выполнении бэктеста: ${error.message}`);
-    } finally {
-        elements.runBacktestBtn.disabled = false;
-        elements.loadingIndicator.style.display = 'none';
     }
-}
 
     // Отображение результатов
     function displayResults(data) {
@@ -271,7 +219,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // Сделки
             elements.tradesTable.innerHTML = data.trades.map(trade => `
-                <tr class="${trade.profit < 0 ? 'table-danger' : 'table-success'}">
+                <tr class="${trade.profit !== null && trade.profit < 0 ? 'table-danger' : 'table-success'}">
                     <td>${formatDateTime(trade.date)}</td>
                     <td>${trade.type}</td>
                     <td>${formatCurrency(trade.price)}</td>
@@ -299,8 +247,11 @@ document.addEventListener('DOMContentLoaded', () => {
         if (portfolioChart) portfolioChart.destroy();
 
         // График цены
-        const priceLabels = historicalData.data.map(item => formatDate(item.Date));
-        const priceData = historicalData.data.map(item => parseFloat(item.Close));
+        const priceLabels = data.equity_curve.map(item => formatDate(item.date));
+        const priceData = historicalData.data.map(item => {
+            const closeKey = Object.keys(item).find(key => key.includes('Close'));
+            return parseFloat(item[closeKey]);
+        });
 
         priceChart = new Chart(elements.priceChart, {
             type: 'line',
@@ -315,7 +266,15 @@ document.addEventListener('DOMContentLoaded', () => {
             },
             options: {
                 responsive: true,
-                maintainAspectRatio: false
+                maintainAspectRatio: false,
+                scales: {
+                    x: {
+                        ticks: {
+                            maxRotation: 45,
+                            minRotation: 45
+                        }
+                    }
+                }
             }
         });
 
@@ -336,7 +295,15 @@ document.addEventListener('DOMContentLoaded', () => {
             },
             options: {
                 responsive: true,
-                maintainAspectRatio: false
+                maintainAspectRatio: false,
+                scales: {
+                    x: {
+                        ticks: {
+                            maxRotation: 45,
+                            minRotation: 45
+                        }
+                    }
+                }
             }
         });
     }
@@ -438,11 +405,59 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Вспомогательные функции
     function showError(message) {
-        alert(message); // В реальном приложении можно заменить на более красивый вывод
+        const toast = document.createElement('div');
+        toast.className = 'toast align-items-center text-white bg-danger border-0 show';
+        toast.setAttribute('role', 'alert');
+        toast.setAttribute('aria-live', 'assertive');
+        toast.setAttribute('aria-atomic', 'true');
+        toast.style.position = 'fixed';
+        toast.style.top = '20px';
+        toast.style.right = '20px';
+        toast.style.zIndex = '1100';
+
+        toast.innerHTML = `
+            <div class="d-flex">
+                <div class="toast-body">
+                    ${message}
+                </div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
+        `;
+
+        document.body.appendChild(toast);
+
+        setTimeout(() => {
+            toast.classList.remove('show');
+            setTimeout(() => toast.remove(), 300);
+        }, 5000);
     }
 
     function showSuccess(message) {
-        alert(message); // В реальном приложении можно заменить на более красивый вывод
+        const toast = document.createElement('div');
+        toast.className = 'toast align-items-center text-white bg-success border-0 show';
+        toast.setAttribute('role', 'alert');
+        toast.setAttribute('aria-live', 'assertive');
+        toast.setAttribute('aria-atomic', 'true');
+        toast.style.position = 'fixed';
+        toast.style.top = '20px';
+        toast.style.right = '20px';
+        toast.style.zIndex = '1100';
+
+        toast.innerHTML = `
+            <div class="d-flex">
+                <div class="toast-body">
+                    ${message}
+                </div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
+        `;
+
+        document.body.appendChild(toast);
+
+        setTimeout(() => {
+            toast.classList.remove('show');
+            setTimeout(() => toast.remove(), 300);
+        }, 3000);
     }
 
     // Глобальная функция для обновления параметров индикатора
