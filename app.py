@@ -13,7 +13,7 @@ from flask_cors import CORS
 
 # --- Конфигурация приложения ---
 BASE_DIR = Path(__file__).resolve().parent
-sys.path.append(str(BASE_DIR / 'back'))
+sys.path.append(str(BASE_DIR))  # Добавляем корень проекта в пути поиска
 
 app = Flask(
     __name__,
@@ -21,13 +21,12 @@ app = Flask(
     static_folder=str(BASE_DIR / 'front' / 'static')
 )
 
-# Настройка CORS - только один раз
+# Настройка CORS для всех маршрутов
 CORS(app, resources={
-    r"/api/*": {
-        "origins": ["http://localhost:*", "http://127.0.0.1:*"],
+    r"/*": {
+        "origins": ["*"],
         "methods": ["GET", "POST", "OPTIONS"],
-        "allow_headers": ["Content-Type"],
-        "supports_credentials": True
+        "allow_headers": ["Content-Type"]
     }
 })
 
@@ -49,11 +48,12 @@ setup_logging()
 
 # --- Инициализация сервиса ---
 try:
-    from Data.Data import YahooFinanceHistory
+    from back.Data.Data import YahooFinanceHistory
+    from back.Backtest.Backtesting import Backtester
     service = YahooFinanceHistory()
-    app.logger.info("YahooFinanceHistory service initialized successfully")
+    app.logger.info("Services initialized successfully")
 except ImportError as e:
-    app.logger.critical(f"Failed to import YahooFinanceHistory: {str(e)}")
+    app.logger.critical(f"Failed to import modules: {str(e)}")
     raise
 except Exception as e:
     app.logger.critical(f"Service initialization error: {str(e)}")
@@ -63,7 +63,7 @@ except Exception as e:
 def _build_cors_preflight_response() -> make_response:
     """Создает CORS response для предварительных запросов"""
     response = make_response()
-    response.headers.add("Access-Control-Allow-Origin", "http://127.0.0.1:5000")
+    response.headers.add("Access-Control-Allow-Origin", "*")
     response.headers.add("Access-Control-Allow-Headers", "Content-Type")
     response.headers.add("Access-Control-Allow-Methods", "POST, OPTIONS")
     return response
@@ -91,6 +91,7 @@ def _validate_historical_request(data: Dict[str, Any]) -> Optional[tuple]:
 def index():
     """Главная страница приложения"""
     return render_template('index.html')
+
 @app.route('/backtest')
 def backtest_page():
     """Страница бэктестинга"""
@@ -98,7 +99,7 @@ def backtest_page():
 
 @app.route('/api/historical', methods=['POST', 'OPTIONS'])
 def get_historical_data():
-    """Получение исторических данных с Yahoo Finance для MOEX акций"""
+    """Получение исторических данных"""
     if request.method == 'OPTIONS':
         return _build_cors_preflight_response()
 
@@ -173,106 +174,49 @@ def download_data():
         app.logger.error(f"Download error: {str(e)}", exc_info=True)
         return jsonify({'error': str(e)}), 500
 
+@app.route('/api/backtest', methods=['POST', 'OPTIONS'])
+def run_backtest():
+    """Запуск бэктеста"""
+    if request.method == 'OPTIONS':
+        return _build_cors_preflight_response()
+
+    try:
+        request_data = request.get_json()
+        if not request_data or 'data' not in request_data:
+            return jsonify({'error': 'No data provided'}), 400
+
+        # Создаем экземпляр бэктестера
+        backtester = Backtester()
+
+        # Загружаем данные
+        if not backtester.load_data_from_json(request_data['data']):
+            return jsonify({'error': 'Failed to load data'}), 400
+
+        # Устанавливаем параметры
+        backtester.set_strategy_parameters(
+            indicators=request_data.get('strategy_params', {}).get('indicators', []),
+            logic=request_data.get('strategy_params', {}).get('logic', 'AND')
+        )
+
+        backtester.set_risk_parameters(
+            initial_capital=float(request_data.get('initial_capital', 10000)),
+            max_trade_amount=float(request_data.get('max_trade_amount', 1000)),
+            stop_loss=float(request_data.get('stop_loss', 0.05)),
+            take_profit=float(request_data.get('take_profit', 0.10))
+        )
+
+        # Запускаем бэктест
+        results = backtester.run_backtest()
+
+        return jsonify(results)
+
+    except Exception as e:
+        app.logger.error(f"Backtest error: {str(e)}", exc_info=True)
+        return jsonify({'error': str(e)}), 500
+
 if __name__ == '__main__':
     app.run(
         host=os.getenv('FLASK_HOST', '0.0.0.0'),
         port=int(os.getenv('FLASK_PORT', 5000)),
         debug=os.getenv('FLASK_DEBUG', 'true').lower() == 'true'
     )
-
-
-# --- Новые маршруты для бэктеста ---
-@app.route('/api/backtest', methods=['POST', 'OPTIONS'])
-def run_backtest():
-    """Запуск бэктеста торговой стратегии"""
-    if request.method == 'OPTIONS':
-        return _build_cors_preflight_response()
-
-    try:
-        # Получаем параметры из запроса
-        request_data = request.get_json()
-        if not request_data:
-            return jsonify({'error': 'Invalid request data'}), 400
-
-        # Создаем временный файл с данными для бэктеста
-        with tempfile.NamedTemporaryFile(mode='w+', suffix='.json', delete=False) as tmp:
-            json.dump(request_data['data'], tmp)
-            tmp_path = tmp.name
-
-        # Запускаем бэктест как отдельный процесс
-        backtest_script = str(BASE_DIR / 'back' / 'Data' / 'Backtesting.py')
-        result = subprocess.run(
-            ['python', backtest_script, tmp_path],
-            capture_output=True,
-            text=True
-        )
-
-        # Удаляем временный файл
-        os.unlink(tmp_path)
-
-        if result.returncode != 0:
-            app.logger.error(f"Backtest error: {result.stderr}")
-            return jsonify({'error': result.stderr}), 500
-
-        # Парсим результат
-        try:
-            backtest_result = json.loads(result.stdout)
-            return jsonify(backtest_result)
-        except json.JSONDecodeError:
-            return jsonify({'error': 'Invalid backtest output', 'output': result.stdout}), 500
-
-    except Exception as e:
-        app.logger.error(f"Backtest API error: {str(e)}", exc_info=True)
-        return jsonify({'error': str(e)}), 500
-
-
-@app.route('/api/backtest', methods=['POST'])
-def run_backtest():
-    try:
-        # Получаем данные из запроса
-        request_data = request.get_json()
-
-        # Проверяем наличие данных
-        if not request_data or 'data' not in request_data:
-            return jsonify({'error': 'No data provided'}), 400
-
-        # Создаем временный файл
-        with tempfile.NamedTemporaryFile(mode='w+', suffix='.json', delete=False) as tmp:
-            json.dump(request_data['data'], tmp)
-            tmp_path = tmp.name
-
-        # Создаем бэктестер и загружаем данные
-        backtester = Backtester()
-        if not backtester.load_data_from_json(tmp_path):
-            return jsonify({'error': 'Failed to load data'}), 400
-
-        # Устанавливаем параметры
-        backtester.strategy_params = request_data.get('strategy_params', {'indicators': [], 'logic': 'AND'})
-        backtester.initial_capital = float(request_data.get('initial_capital', 10000))
-        backtester.max_trade_amount = float(request_data.get('max_trade_amount', 1000))
-        backtester.stop_loss = float(request_data.get('stop_loss', 0.05))
-        backtester.take_profit = float(request_data.get('take_profit', 0.10))
-
-        # Запускаем бэктест
-        backtester.run_backtest()
-
-        # Формируем результаты
-        result = {
-            'initial_capital': backtester.initial_capital,
-            'final_capital': backtester.portfolio_values[-1],
-            'total_return': (backtester.portfolio_values[
-                                 -1] - backtester.initial_capital) / backtester.initial_capital * 100,
-            'max_drawdown': max(
-                [(max(backtester.portfolio_values[:i + 1]) - val) / max(backtester.portfolio_values[:i + 1])
-                 for i, val in enumerate(backtester.portfolio_values)]) * 100,
-            'trades': backtester.trades,
-            'portfolio_values': backtester.portfolio_values
-        }
-
-        # Удаляем временный файл
-        os.unlink(tmp_path)
-
-        return jsonify(result)
-
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500

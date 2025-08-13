@@ -175,7 +175,7 @@ document.addEventListener('DOMContentLoaded', () => {
             take_profit: parseFloat(elements.takeProfit.value) / 100
         };
 
-        const response = await fetch('http://localhost:5000/backtest', {
+        const response = await fetch('/backtest', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',

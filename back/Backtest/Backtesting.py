@@ -1,19 +1,12 @@
 import json
 import pandas as pd
-from flask import Flask, request, jsonify
 from datetime import datetime
+import matplotlib
 import matplotlib.pyplot as plt
 from ta.trend import SMAIndicator, EMAIndicator, MACD
 from ta.momentum import RSIIndicator
 from ta.volatility import BollingerBands
-import matplotlib
-import tempfile
-import os
-from flask import Flask, request, jsonify
-from flask_cors import CORS  # Импортируем CORS
 
-app = Flask(__name__)
-CORS(app)
 
 class Backtester:
     def __init__(self):
@@ -34,18 +27,16 @@ class Backtester:
         self.interval = '1d'
 
     def load_data_from_json(self, data):
-        """Загрузка исторических данных из JSON объекта с нестандартными ключами"""
+        """Загрузка исторических данных из JSON"""
         try:
             if isinstance(data, str):
                 data = json.loads(data)
 
-            # Обработка нестандартных ключей вида "('Close', 'AAPL')"
             processed_data = []
             for item in data['data']:
                 new_item = {}
                 for key, value in item.items():
                     if isinstance(key, str) and key.startswith("('") and key.endswith("')"):
-                        # Извлекаем 'Close' из "('Close', 'AAPL')"
                         new_key = key.split("'")[1]
                         new_item[new_key] = value
                     else:
@@ -53,10 +44,9 @@ class Backtester:
                 processed_data.append(new_item)
 
             self.data = pd.DataFrame(processed_data)
-            self.data['Date'] = pd.to_datetime(self.data['Datetime'])  # Используем 'Datetime' как дату
+            self.data['Date'] = pd.to_datetime(self.data['Datetime'])
             self.data.set_index('Date', inplace=True)
 
-            # Сохраняем метаданные
             self.ticker = data.get('ticker', 'UNKNOWN')
             self.start_date = data.get('startDate', self.data.index[0].date())
             self.end_date = data.get('endDate', self.data.index[-1].date())
@@ -145,7 +135,6 @@ class Backtester:
             'logic': logic
         }
 
-        # Добавляем индикаторы в данные
         for indicator in indicators:
             self.add_indicator(indicator['type'], indicator)
 
@@ -233,7 +222,7 @@ class Backtester:
         return None
 
     def run_backtest(self):
-        """Запуск бэктеста и возврат результатов"""
+        """Запуск бэктеста"""
         if self.data is None:
             return {'error': 'Data not loaded'}
 
@@ -364,7 +353,7 @@ class Backtester:
         }
 
     def plot_results(self, save_path=None):
-        """Визуализация результатов (для использования в CLI)"""
+        """Визуализация результатов"""
         if not self.data or not self.trades:
             return False
 
@@ -446,67 +435,3 @@ class Backtester:
         except Exception as e:
             print(f"Ошибка при построении графиков: {e}")
             return False
-
-
-def run_backtest_from_json(json_data, strategy_params, risk_params):
-    """Функция для запуска бэктеста из JSON данных"""
-    backtester = Backtester()
-
-    if not backtester.load_data_from_json(json_data):
-        return {'error': 'Failed to load data'}
-
-    backtester.set_strategy_parameters(
-        indicators=strategy_params.get('indicators', []),
-        logic=strategy_params.get('logic', 'AND')
-    )
-
-    backtester.set_risk_parameters(
-        initial_capital=risk_params.get('initial_capital', 10000),
-        max_trade_amount=risk_params.get('max_trade_amount', 1000),
-        stop_loss=risk_params.get('stop_loss', 0.05),
-        take_profit=risk_params.get('take_profit', 0.10)
-    )
-
-    return backtester.run_backtest()
-
-
-@app.route('/backtest', methods=['POST', 'OPTIONS'])  # Добавляем поддержку OPTIONS для CORS
-def handle_backtest():
-    if request.method == 'OPTIONS':
-        # Предварительный запрос CORS
-        response = jsonify({'status': 'ok'})
-        response.headers.add('Access-Control-Allow-Origin', '*')
-        response.headers.add('Access-Control-Allow-Headers', '*')
-        response.headers.add('Access-Control-Allow-Methods', 'POST, OPTIONS')
-        return response
-
-    try:
-        data = request.get_json()
-
-        # Проверка обязательных полей
-        if not data or 'data' not in data:
-            return jsonify({'error': 'Missing required data'}), 400
-
-        # Запуск бэктеста
-        results = run_backtest_from_json(
-            data['data'],
-            data.get('strategy_params', {}),
-            {
-                'initial_capital': data.get('initial_capital', 10000),
-                'max_trade_amount': data.get('max_trade_amount', 1000),
-                'stop_loss': data.get('stop_loss', 0.05),
-                'take_profit': data.get('take_profit', 0.10)
-            }
-        )
-
-        response = jsonify(results)
-        response.headers.add('Access-Control-Allow-Origin', '*')
-        return response
-
-    except Exception as e:
-        response = jsonify({'error': str(e)})
-        response.headers.add('Access-Control-Allow-Origin', '*')
-        return response, 500
-
-if __name__ == "__main__":
-    app.run(host='0.0.0.0', port=5000, debug=True)
