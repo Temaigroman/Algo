@@ -176,6 +176,7 @@ def download_data():
 
 @app.route('/api/backtest', methods=['POST', 'OPTIONS'])
 def run_backtest():
+    print("Запрос получен!")  # Проверить, доходит ли сюда
     """Запуск бэктеста"""
     if request.method == 'OPTIONS':
         return _build_cors_preflight_response()
