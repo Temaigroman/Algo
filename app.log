@@ -266,3 +266,7 @@ AttributeError: 'MoexAlgoHistory' object has no attribute 'is_valid_ticker'
 2025-08-13 16:41:57,388 CRITICAL: Failed to import modules: No module named 'matplotlib' [in D:\!IT\Algo\app.py:56]
 2025-08-13 16:53:06,474 INFO: Services initialized successfully [in D:\!IT\Algo\app.py:54]
 2025-08-13 16:53:08,975 INFO: Services initialized successfully [in D:\!IT\Algo\app.py:54]
+2025-08-13 16:55:45,921 INFO: Services initialized successfully [in D:\!IT\Algo\app.py:54]
+2025-08-13 16:55:47,020 INFO: Services initialized successfully [in D:\!IT\Algo\app.py:54]
+2025-08-13 17:05:56,501 INFO: Services initialized successfully [in D:\!IT\Algo\app.py:54]
+2025-08-13 17:05:57,552 INFO: Services initialized successfully [in D:\!IT\Algo\app.py:54]
