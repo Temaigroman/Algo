@@ -273,3 +273,8 @@ AttributeError: 'MoexAlgoHistory' object has no attribute 'is_valid_ticker'
 2025-08-13 17:09:53,479 INFO: Services initialized successfully [in D:\!IT\Algo\app.py:54]
 2025-08-13 17:10:36,013 INFO: Services initialized successfully [in D:\!IT\Algo\app.py:54]
 2025-08-13 17:10:37,013 INFO: Services initialized successfully [in D:\!IT\Algo\app.py:54]
+2025-08-14 22:18:33,033 INFO: Services initialized successfully [in D:\!IT\Algo\app.py:54]
+2025-08-14 22:18:34,190 INFO: Services initialized successfully [in D:\!IT\Algo\app.py:54]
+2025-08-14 22:19:08,751 INFO: Request for AAPL from 2024-08-14 to 2025-08-14, interval 1d [in D:\!IT\Algo\app.py:122]
+2025-08-27 19:42:42,774 INFO: Services initialized successfully [in D:\!IT\Algo\app.py:54]
+2025-08-27 19:42:43,941 INFO: Services initialized successfully [in D:\!IT\Algo\app.py:54]
