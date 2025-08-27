@@ -11,6 +11,7 @@ class TradingBot:
         self.risk_manager = RiskManager(self.order_manager)
         self.money_manager = MoneyManager(self.api)
 
+
     def run_strategy(self, ticker: str, strategy_config: Dict):
         """Основная логика торгового алгоритма"""
         data = self.api.get_market_data(ticker)
