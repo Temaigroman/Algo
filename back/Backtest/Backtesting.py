@@ -62,6 +62,7 @@ class Backtester:
             print(f"Ошибка загрузки данных: {e}")
             return False
 
+
     def add_indicator(self, indicator_type, params=None):
         """Добавление индикатора"""
         if params is None:
