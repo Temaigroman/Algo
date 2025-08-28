@@ -2,6 +2,7 @@ import json
 import pandas as pd
 from datetime import datetime
 import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from ta.trend import SMAIndicator, EMAIndicator, MACD
 from ta.momentum import RSIIndicator
@@ -48,8 +49,12 @@ class Backtester:
             self.data.set_index('Date', inplace=True)
 
             self.ticker = data.get('ticker', 'UNKNOWN')
-            self.start_date = data.get('startDate', self.data.index[0].date())
-            self.end_date = data.get('endDate', self.data.index[-1].date())
+            if not self.data.empty:
+                self.start_date = data.get('startDate', self.data.index[0].date())
+                self.end_date = data.get('endDate', self.data.index[-1].date())
+            else:
+                self.start_date = data.get('startDate')
+                self.end_date = data.get('endDate')
             self.interval = data.get('interval', '1d')
 
             return True
@@ -159,14 +164,16 @@ class Backtester:
                     signals.append(None)
 
             elif ind_type == 'MACD':
-                macd = self.data.iloc[i]['macd']
-                signal = self.data.iloc[i]['macd_signal']
                 hist = self.data.iloc[i]['macd_hist']
                 prev_hist = self.data.iloc[i - 1]['macd_hist']
+                macd_line = self.data.iloc[i]['macd']
+                signal_line = self.data.iloc[i]['macd_signal']
 
-                if macd > signal and hist > 0 and prev_hist <= 0:
+                if hist > 0 and prev_hist <= 0:
                     signals.append('buy')
-                elif macd < signal and hist < 0 and prev_hist >= 0:
+                # Corrected condition for sell signal: MACD line crosses below signal line.
+                # This is equivalent to the histogram turning negative.
+                elif hist < 0 and prev_hist >= 0:
                     signals.append('sell')
                 else:
                     signals.append(None)
@@ -299,7 +306,10 @@ class Backtester:
             })
 
         total_return = (capital - self.initial_capital) / self.initial_capital * 100
-        profit_factor = winning_trades / losing_trades if losing_trades > 0 else float('inf')
+        if losing_trades > 0:
+            profit_factor = winning_trades / losing_trades
+        else:
+            profit_factor = float('inf') if winning_trades > 0 else 0.0
 
         return {
             'initial_capital': self.initial_capital,
@@ -321,7 +331,7 @@ class Backtester:
 
     def plot_results(self, save_path=None):
         """Визуализация результатов"""
-        if not self.data or not self.trades:
+        if self.data is None or self.data.empty or not self.trades:
             return False
 
         try:

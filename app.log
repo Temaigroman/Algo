@@ -289,3 +289,48 @@ AttributeError: 'MoexAlgoHistory' object has no attribute 'is_valid_ticker'
 2025-08-28 18:18:10,398 INFO: Request for AAPL from 2024-08-28 to 2025-08-28, interval 1d [in D:\!IT\Algo\app.py:122]
 2025-08-28 18:22:53,867 INFO: Services initialized successfully [in D:\!IT\Algo\app.py:54]
 2025-08-28 18:23:24,725 INFO: Services initialized successfully [in D:\!IT\Algo\app.py:54]
+2025-08-28 18:34:20,280 INFO: Services initialized successfully [in D:\!IT\Algo\app.py:54]
+2025-08-28 18:34:21,395 INFO: Services initialized successfully [in D:\!IT\Algo\app.py:54]
+2025-08-28 18:42:08,113 INFO: Services initialized successfully [in D:\!IT\Algo\app.py:54]
+2025-08-28 18:42:08,443 INFO: Services initialized successfully [in D:\!IT\Algo\app.py:54]
+2025-08-28 18:42:14,732 CRITICAL: Service initialization error: unexpected indent (Backtesting.py, line 5) [in D:\!IT\Algo\app.py:59]
+2025-08-28 18:42:15,055 CRITICAL: Service initialization error: unexpected indent (Backtesting.py, line 5) [in D:\!IT\Algo\app.py:59]
+2025-08-28 18:43:44,935 INFO: Services initialized successfully [in D:\!IT\Algo\app.py:54]
+2025-08-28 18:43:46,351 INFO: Services initialized successfully [in D:\!IT\Algo\app.py:54]
+2025-08-28 18:48:48,372 INFO: Services initialized successfully [in D:\!IT\Algo\app.py:54]
+2025-08-28 18:48:49,646 INFO: Services initialized successfully [in D:\!IT\Algo\app.py:54]
+2025-08-28 19:00:55,632 INFO: Services initialized successfully [in D:\!IT\Algo\app.py:54]
+2025-08-28 19:14:24,467 INFO: Services initialized successfully [in D:\!IT\Algo\app.py:54]
+2025-08-28 19:14:25,895 INFO: Services initialized successfully [in D:\!IT\Algo\app.py:54]
+2025-08-28 19:14:48,698 ERROR: Backtest error: name 'macd' is not defined [in D:\!IT\Algo\app.py:215]
+Traceback (most recent call last):
+  File "D:\!IT\Algo\app.py", line 210, in run_backtest
+    results = backtester.run_backtest()
+              ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\!IT\Algo\back\Backtest\Backtesting.py", line 211, in run_backtest
+    signal = self.get_signal(i)
+             ^^^^^^^^^^^^^^^^^^
+  File "D:\!IT\Algo\back\Backtest\Backtesting.py", line 172, in get_signal
+    elif macd < signal and hist < 0 and prev_hist >= 0:
+         ^^^^
+NameError: name 'macd' is not defined
+2025-08-28 19:14:54,811 ERROR: Backtest error: name 'macd' is not defined [in D:\!IT\Algo\app.py:215]
+Traceback (most recent call last):
+  File "D:\!IT\Algo\app.py", line 210, in run_backtest
+    results = backtester.run_backtest()
+              ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "D:\!IT\Algo\back\Backtest\Backtesting.py", line 211, in run_backtest
+    signal = self.get_signal(i)
+             ^^^^^^^^^^^^^^^^^^
+  File "D:\!IT\Algo\back\Backtest\Backtesting.py", line 172, in get_signal
+    elif macd < signal and hist < 0 and prev_hist >= 0:
+         ^^^^
+NameError: name 'macd' is not defined
+2025-08-28 20:48:37,329 INFO: Services initialized successfully [in D:\!IT\Algo\app.py:54]
+2025-08-28 20:48:38,423 INFO: Services initialized successfully [in D:\!IT\Algo\app.py:54]
+2025-08-28 20:49:57,899 INFO: Services initialized successfully [in D:\!IT\Algo\app.py:54]
+2025-08-28 20:49:59,036 INFO: Services initialized successfully [in D:\!IT\Algo\app.py:54]
+2025-08-28 20:50:27,534 INFO: Request for SBER.ME from 2015-01-28 to 2025-08-28, interval 1d [in D:\!IT\Algo\app.py:120]
+2025-08-28 21:04:10,216 INFO: Services initialized successfully [in D:\!IT\Algo\app.py:54]
+2025-08-28 21:04:11,292 INFO: Services initialized successfully [in D:\!IT\Algo\app.py:54]
+2025-08-28 21:04:29,660 INFO: Request for AAPL from 2024-08-28 to 2025-08-28, interval 1d [in D:\!IT\Algo\app.py:120]

@@ -108,18 +108,16 @@ def get_historical_data():
         if not request_data:
             return jsonify({'error': 'Invalid request data'}), 400
 
-        ticker = request_data.get('ticker', '').upper()
-        start_date = request_data.get('startDate')
-        end_date = request_data.get('endDate', datetime.now().strftime('%Y-%m-%d'))
-        interval = request_data.get('interval', '1d')
+        params, error = _validate_historical_request(request_data)
+        if error:
+            return jsonify({'error': error[0]}), error[1]
 
-        if not ticker or not start_date:
-            return jsonify({'error': 'Missing required parameters'}), 400
+        ticker = params['ticker']
+        start_date = params['start_date']
+        end_date = params['end_date']
+        interval = params['interval']
 
-        if not ticker.endswith('.ME') and ticker in ['SBER', 'GAZP', 'VTBR', 'MOEX', 'GMKN', 'LKOH', 'ROSN', 'TATN', 'NVTK', 'PLZL']:
-            ticker += '.ME'
-
-        app.logger.info(f"Request for {ticker} from {start_date} to {end_date}, interval {interval}")
+        app.logger.info(f"Request for {params['ticker']} from {params['start_date']} to {params['end_date']}, interval {params['interval']}")
 
         df = service.get_historical_data(ticker, start_date, end_date, interval)
 
