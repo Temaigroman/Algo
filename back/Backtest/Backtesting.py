@@ -65,33 +65,14 @@ class Backtester:
         if indicator_type == 'SMA':
             window = params.get('window', 20)
             self.data[f'sma_{window}'] = SMAIndicator(self.data['Close'], window).sma_indicator()
-            self.strategy_params['indicators'].append({
-                'type': 'SMA',
-                'window': window,
-                'column': 'Close'
-            })
 
         elif indicator_type == 'EMA':
             window = params.get('window', 20)
             self.data[f'ema_{window}'] = EMAIndicator(self.data['Close'], window).ema_indicator()
-            self.strategy_params['indicators'].append({
-                'type': 'EMA',
-                'window': window,
-                'column': 'Close'
-            })
 
         elif indicator_type == 'RSI':
             window = params.get('window', 14)
-            overbought = params.get('overbought', 70)
-            oversold = params.get('oversold', 30)
             self.data[f'rsi_{window}'] = RSIIndicator(self.data['Close'], window).rsi()
-            self.strategy_params['indicators'].append({
-                'type': 'RSI',
-                'window': window,
-                'overbought': overbought,
-                'oversold': oversold,
-                'column': 'Close'
-            })
 
         elif indicator_type == 'Bollinger':
             window = params.get('window', 20)
@@ -99,12 +80,6 @@ class Backtester:
             bb = BollingerBands(self.data['Close'], window, std_dev)
             self.data[f'bb_upper_{window}'] = bb.bollinger_hband()
             self.data[f'bb_lower_{window}'] = bb.bollinger_lband()
-            self.strategy_params['indicators'].append({
-                'type': 'Bollinger',
-                'window': window,
-                'std_dev': std_dev,
-                'column': 'Close'
-            })
 
         elif indicator_type == 'MACD':
             fast = params.get('fast', 12)
@@ -114,13 +89,6 @@ class Backtester:
             self.data['macd'] = macd.macd()
             self.data['macd_signal'] = macd.macd_signal()
             self.data['macd_hist'] = macd.macd_diff()
-            self.strategy_params['indicators'].append({
-                'type': 'MACD',
-                'fast': fast,
-                'slow': slow,
-                'signal': signal,
-                'column': 'Close'
-            })
 
         else:
             print(f"Неизвестный тип индикатора: {indicator_type}")
@@ -137,7 +105,6 @@ class Backtester:
 
         for indicator in indicators:
             self.add_indicator(indicator['type'], indicator)
-
     def set_risk_parameters(self, initial_capital=10000, max_trade_amount=1000,
                            stop_loss=0.05, take_profit=0.10):
         """Установка параметров риска"""
